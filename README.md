@@ -938,6 +938,185 @@ class MyStrategy final : public Strategy {
 };
 ```
 
+## 算法交易
+
+### 使用方式
+
+```cpp
+#include "xyts/strategy/algo_trading_service.h"
+// #include others
+
+class MyStrategy final : public Strategy {
+ public:
+  explicit MyStrategy(StrategyContext* ctx)
+      : ctx_(ctx),
+        param_(dynamic_cast<MyStrategyParamManager*>(ctx->GetParamManager())),
+        contract_(ContractTable::GetByInstrument(param_->get_instr())),
+        algo_trading_service_(ctx_) {
+    if (!ctx_->Subscribe({param_->get_instr()})) {
+      throw std::runtime_error("subscribe failed");
+    }
+  }
+
+  void OnTick(const TickData& tick) final {
+    if (satisfied condition) {
+      nlohmann::json algo_params{
+        {"algo_name", "TWAP"},
+        {...}
+      };
+      algo_trading_service_.AddAlgoOrder();
+    }
+    algo_trading_service_.OnTick(tick);
+  }
+
+  void OnOrder(const OrderResponse& order) final {
+    algo_trading_service_.OnOrder(order);
+  }
+
+ private:
+  StrategyContext* ctx_;
+  MyStrategyParamManager* param_;
+  ContractPtr contract_;
+  AlgoTradingService algo_trading_service_;
+};
+```
+### 支持的算法类型：
+
+所有参数中的时间单位均是ms
+
+每个算法都共有的参数
+
+```json
+{
+  "algo_name": "TWAP/VWAP/...",
+  "instr": "000001.XSHE",
+  "direction": "Buy",
+  "offset": "Auto",
+  "volume": 10000,
+  "timeout": "30000"
+}
+```
+
+#### TWAP
+
+简介：根据时间加权平均市价，间隔时间发单
+
+参数说明:
+
+- start_time, end_time：控制TWAP开始与结束的时间（算法可能会因成交慢完成时间滞后于给定时间）
+- reject_interval:订单被拒后，间隔多久重发
+- duration: 每个多少毫秒发送子单
+- price_tick_added: 超时后，调整子单的价格。为当前时间twap +- price_tick_added * unit_price_tick
+
+示例
+
+```json
+{
+  "algo_name": "TWAP",
+  "start_time": 1705064340608,
+  "end_time": 1705064400888,
+  "duration": 30000,
+  "reject_interval": 500,
+  "price_tick_added": 1
+}
+```
+
+#### VWAP
+
+简介：根据成交量加权平均市价，间隔时间发单
+
+具体参数解释：和TWAP参数一致，除了duration需要最小间隔分钟，如 algo_params["duration"] = 60000
+
+示例
+
+```json
+{
+  "algo_name": "VWAP",
+  "start_time": 1705064340608,
+  "end_time": 1705064400888,
+  "duration": 60000,
+  "reject_interval": 500,
+  "price_tick_added": 1
+}
+```
+
+#### IS
+
+简介：将冲击成本与时间成本考虑在内，给定风险系数下，求最优分单
+
+具体参数解释:
+
+- risk_aversion：风险厌恶系数(>0)，越大表示对时间冲击成本带来风险越谨慎，故会尽可能提早完成算法单(开始时，子单大小很大)
+- total_time：表示执行的总时间，duration表示间隔时间，两者最小单位均需要是分钟。
+
+示例
+
+```json
+{
+  "algo_name":"IS",
+  "total_time": 60000,
+  "risk_aversion": 0.5,
+  "duration": 10000,
+  "reject_interval": 500,
+  "price_tick_added": 1
+}
+```
+
+#### Iceberg
+
+简介：根据显示数量参数，在某个档位或以对价发送小额单，只有上一笔子单完成，才会继续发送下笔，直到成交量满足给定额
+
+具体参数解释：
+- order_type: 发单类型，分为两种 1.时间优先"time_preferred" 2.价格优先"price_preferred"
+- display_vol: 每笔子单显示数量，如果是分数(0-1)，则按当前市场五档挂单数量均值*给定分数动态计子单数量大小;如果是整数，则按给定整数定值确定每笔子单数额
+- interval: 每隔多少毫秒检测子单价格是否波动太大
+- reject_interval: 订单被拒后,间隔多久重发
+- traded_interval: 订单完全成交后,间隔多久发下笔子单
+- imb_sum_ratio: 判断买卖势力加上一个比率,在买单中,如果sum_asks/sum_bids > ratio,才有可能bid1单; 如果想要更快成交(打对价)，将该ratio调为>1的值即可，反之<1
+- imb_level1_ratio: 同上,但是检测的是ask1/bid1
+- allow_pending_up_limit: 涨停板下，允许一直挂单(没有超时)
+- allow_pending_down_limit: 跌停板下，允许一直挂单(没有超时)
+- last_order_kbest: 科创板下，零股是否发市价单
+- price_depth: 检查价格深度(百分比),如果子单价格超过当前价格的2 * price_depth/100，则撤销发。（其中小市值股票根据price_tick判断）
+- price_tick_added: 只在价格优先下有用,会根据price_tick_added，调整价格发出
+
+示例
+
+```json
+{
+  "algo_name":"Iceberg",
+  "price_depth": 0.2,
+  "interval": 2000,
+  "start_time": 1705064340608,
+  "display_vol": 0.2,
+  "reject_interval": 500,
+  "traded_interval": 500,
+  "imb_sum_ratio": 0,
+  "imb_level1_ratio": 0,
+  "price_tick_added": 0,
+  "allow_pending_up_limit": true,
+  "allow_pending_down_limit": true
+}
+```
+
+#### Sniper
+
+简介：市场行情达到给定条件，则立刻发对价单，数额是对价一档挂单量，直到完成给定数额
+
+具体参数解释：
+
+- aggressiveness: 是时间间隔，再发送上一笔子单后，超过aggressiveness毫秒后，才能发送下一笔达到条件的子单
+
+示例
+
+```json
+{
+  "algo_name":"Sniper",
+  "start_time": 1705064340608,
+  "aggressiveness": 100
+}
+```
+
 ## BarGenerator: 实时K线合成
 
 BarGenerator支持实时合成多种周期的K线，如3s/5s/6s/10s/15s/20s/30s/1min/3min/5min/15min等
