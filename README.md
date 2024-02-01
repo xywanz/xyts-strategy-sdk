@@ -991,7 +991,7 @@ class MyStrategy final : public Strategy {
 
 - start_time, end_time：控制TWAP开始与结束的时间（算法可能会因成交慢完成时间滞后于给定时间）
 - reject_interval:订单被拒后，间隔多久重发
-- duration: 每个多少毫秒发送子单
+- duration: 每隔多少微秒发送子单
 - price_tick_added: 超时后，调整子单的价格。为当前时间twap +- price_tick_added * unit_price_tick
 
 示例
@@ -1055,7 +1055,7 @@ class MyStrategy final : public Strategy {
 具体参数解释：
 - order_type: 发单类型，分为两种 1.时间优先"time_preferred" 2.价格优先"price_preferred"
 - display_vol: 每笔子单显示数量，如果是分数(0-1)，则按当前市场五档挂单数量均值*给定分数动态计子单数量大小;如果是整数，则按给定整数定值确定每笔子单数额
-- interval: 每隔多少毫秒检测子单价格是否波动太大
+- interval: 每隔多少微秒检测子单价格是否波动太大
 - reject_interval: 订单被拒后,间隔多久重发
 - traded_interval: 订单完全成交后,间隔多久发下笔子单
 - imb_sum_ratio: 判断买卖势力加上一个比率,在买单中,如果sum_asks/sum_bids > ratio,才有可能bid1单; 如果想要更快成交(打对价)，将该ratio调为>1的值即可，反之<1
@@ -1091,7 +1091,7 @@ class MyStrategy final : public Strategy {
 
 具体参数解释：
 
-- aggressiveness: 是时间间隔，再发送上一笔子单后，超过aggressiveness毫秒后，才能发送下一笔达到条件的子单
+- aggressiveness: 是时间间隔，再发送上一笔子单后，超过aggressiveness微秒后，才能发送下一笔达到条件的子单
 
 示例
 
