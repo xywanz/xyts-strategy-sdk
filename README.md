@@ -1,5 +1,7 @@
 # 策略开发教程
 
+联系方式: kevin.lau.gd@gmail.com
+
 ## 开发环境
 
 ```sh
@@ -219,10 +221,6 @@ class StrategySpreadArb final : public Strategy {
   ContractPtr leg1_contract_;
   ContractPtr leg2_contract_;
 
-  // 这里只是用一个成员变量简单维护持仓
-  // 实盘中应该利用OnPosition OnOrder OnTrade等回调来维护持仓
-  int position_ = 0;
-
   double leg1_mid_price_ = std::numeric_limits<double>::quiet_NaN();
   double leg2_mid_price_ = std::numeric_limits<double>::quiet_NaN();
 };
@@ -268,23 +266,22 @@ void StrategySpreadArb::OnTick(const TickData& tick) {
       return;
     }
     double spread = leg1_mid_price_ - leg2_mid_price_;
+    auto pos = ctx_->GetLogicalPosition(tick.ticker_id);
     if (spread >= param_->get_upper_line()) {
       // 超过上轨，如果仓位还没满做空spread
-      if (position_ > -1) {
+      if (pos.volume > -1) {
         ctx_->Buy(leg2_contract_->ticker_id, 1, OrderType::kLimit,
                   leg2_contract_->upper_limit_price, std::chrono::microseconds{100 * 1000});
         ctx_->Sell(leg1_contract_->ticker_id, 1, OrderType::kLimit,
                    leg1_contract_->lower_limit_price, std::chrono::milliseconds{100 * 1000});
-        position_ -= 1;
       }
     } else if (spread <= param_->get_lower_line()) {
       // 跌破下轨，如果仓位还没满则做多spread
-      if (position_ < 1) {
+      if (pos.volume < 1) {
         ctx_->Sell(leg2_contract_->ticker_id, 1, OrderType::kLimit,
                    leg2_contract_->lower_limit_price std::chrono::milliseconds{100 * 1000});
         ctx_->Buy(leg1_contract_->ticker_id, 1, OrderType::kLimit,
                   leg1_contract_->upper_limit_price std::chrono::milliseconds{100 * 1000});
-        position_ += 1;
       }
     }
   }
@@ -327,6 +324,7 @@ EXPORT_STRATEGY(StrategySpreadArb);
 
 ## 策略程序编译
 
+参考`https://github.com/xywanz/xyts-strategy-demo`
 
 ## 策略程序回测
 
