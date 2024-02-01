@@ -16,12 +16,12 @@ g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 
 会继续升级至完全支持c++20的g++版本，尽可能跟进最新的g++版本，后续会考虑打包成docker镜像
 
-几点想说的：
+几点说明：
 - 不支持其他平台，即使使用g++ 11.3.0也可能会有问题。可考虑支持Clang及AppleClang，但VC++绝无可能
 - 不支持图形界面，但提供数据推送的接口，有需要可自己对接
 - 交易系统使用O3优化
 - 每个接口或模块尽可能做成可测试的，单元测试尽可能覆盖所有代码
-- pystrategy接口已废弃，但实盘还能用，只是回测已经不支持pystrategy了。后续会有重构的版本
+- 回测暂时不支持pystrategy，后续会加上
 
 ## 简介
 
@@ -93,13 +93,13 @@ python3 strategy_param_mgr_generator.py strategy_spread_arb.json
 class StrategySpreadArbParamManager final : public ::xyts::strategy::StrategyParamManager {
  public:
   explicit StrategySpreadArbParamManager(const std::filesystem::path& param_path): StrategyParamManager(param_path) {
-    CheckParm("leg1_instr");
+    CheckParam("leg1_instr");
     leg1_instr = json_params_["leg1_instr"]["value"].get<std::string>();
-    CheckParm("leg2_instr");
+    CheckParam("leg2_instr");
     leg2_instr = json_params_["leg2_instr"]["value"].get<std::string>();
-    CheckParm("upper_line");
+    CheckParam("upper_line");
     upper_line = json_params_["upper_line"]["value"].get<double>();
-    CheckParm("lower_line");
+    CheckParam("lower_line");
     lower_line = json_params_["lower_line"]["value"].get<double>();
   }
 
@@ -157,7 +157,7 @@ class StrategySpreadArbParamManager final : public ::xyts::strategy::StrategyPar
   }
 
  private:
-  void CheckParm(const char* param_name) {{
+  void CheckParam(const char* param_name) {{
     if (!json_params_.contains(param_name) || !json_params_[param_name].contains("value")) {{
       throw std::runtime_error("Init strategy params failed: Param '" + std::string(param_name) + "' not found in *autogen.json");
     }}
@@ -1099,7 +1099,7 @@ class MyStrategy final : public Strategy {
 {
   "algo_name":"Sniper",
   "start_time": 1705064340608000,
-  "aggressiveness": 100
+  "aggressiveness": 100000
 }
 ```
 

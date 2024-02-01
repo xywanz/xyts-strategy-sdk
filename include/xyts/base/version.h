@@ -4,7 +4,7 @@
 
 namespace xyts {
 
-const char* VERSION_INFO_GIT = "hash: 0d2d56e5bff65de03daedcea2f4998d803fa11d0 date: 2024-02-01 11:26:05 +0800 ref:  (HEAD -> master, local/master)\n";
+const char* VERSION_INFO_GIT = "hash: 84cd171f8f65f47653971860d7d4388dbf61d959 date: 2024-02-01 15:41:25 +0800 ref:  (HEAD -> master, local/master)\n";
 const char* VERSION_INFO_CXX_COMPILER = "g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0";
 const char* CMAKE_CXX_COMPILER_ID = "GNU";
 const char* CMAKE_CXX_COMPILER = "/usr/bin/g++-11";
