@@ -26,7 +26,13 @@ inline bool IsOffsetClose(Offset offset) {
           static_cast<uint8_t>(Offset::kCloseYesterday));
 }
 
-inline bool IsValidOffset(Offset offset) { return IsOffsetOpen(offset) || IsOffsetClose(offset); }
+inline bool IsValidOffset(Offset offset) {
+  return static_cast<uint8_t>(offset) &
+         (static_cast<uint8_t>(Offset::kOpen) | static_cast<uint8_t>(Offset::kClose) |
+          static_cast<uint8_t>(Offset::kCloseToday) |
+          static_cast<uint8_t>(Offset::kCloseYesterday) | static_cast<uint8_t>(Offset::kAuto) |
+          static_cast<uint8_t>(Offset::kInternalTrade));
+}
 
 // 是否是限价类型的订单，除了市价单和best单，其他类型的订单都需要提供价格
 inline bool IsLimitType(OrderType type) {

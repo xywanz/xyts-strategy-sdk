@@ -28,19 +28,19 @@ class StrategyContext : public TimeoutManager {
 
   virtual void Stop() = 0;
 
-  virtual ClientOrderId SendOrder(uint32_t ticker_id, int volume, Direction direction,
+  virtual ClientOrderId SendOrder(TickerId ticker_id, int volume, Direction direction,
                                   Offset offset, OrderType type, double price,
                                   std::chrono::microseconds timeout = kDefaultOrderTimeout,
                                   uint64_t user_data = 0) = 0;
 
-  ClientOrderId Buy(uint32_t ticker_id, int volume, OrderType type, double price,
+  ClientOrderId Buy(TickerId ticker_id, int volume, OrderType type, double price,
                     std::chrono::microseconds timeout = kDefaultOrderTimeout,
                     uint64_t user_data = 0) {
     return SendOrder(ticker_id, volume, Direction::kBuy, Offset::kAuto, type, price, timeout,
                      user_data);
   }
 
-  ClientOrderId Sell(uint32_t ticker_id, int volume, OrderType type, double price,
+  ClientOrderId Sell(TickerId ticker_id, int volume, OrderType type, double price,
                      std::chrono::microseconds timeout = kDefaultOrderTimeout,
                      uint64_t user_data = 0) {
     return SendOrder(ticker_id, volume, Direction::kSell, Offset::kAuto, type, price, timeout,
@@ -54,13 +54,13 @@ class StrategyContext : public TimeoutManager {
 
   virtual std::vector<PositionData> GetPosition() const = 0;
 
-  virtual PositionData GetPosition(const std::string& instr) const = 0;
+  virtual PositionData GetPosition(TickerId ticker_id) const = 0;
 
   virtual std::vector<LogicalPositionData> GetLogicalPosition() const = 0;
 
-  virtual LogicalPositionData GetLogicalPosition(const std::string& instr) const = 0;
+  virtual LogicalPositionData GetLogicalPosition(TickerId ticker_id) const = 0;
 
-  virtual std::vector<Fill> GetFills(const std::string& instr) const = 0;
+  virtual std::vector<Fill> GetFills(TickerId ticker_id) const = 0;
 
   virtual std::vector<Fill> GetFills() const = 0;
 

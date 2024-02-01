@@ -632,60 +632,32 @@ ctx->ResetOrderTimeout(cli_order_id, std::chrono::microseconds{1000 * 1000});
 
 ### GetPosition
 
-从数据库读取物理持仓，性能较差，只适合在策略初始化时用于查询初始持仓。如果要维护实时持仓，需要配合OnPosition回调使用，下面有个示例说明了如何维护实时的物理持仓
+获取单个合约的实时物理持仓，效率很高
 
 ```cpp
-class MyStrategy: public Strategy {
- public:
-  MyStrategy(StrategyContext* ctx) {
-    auto positions = ctx->GetPosition();
-    for (const auto& pos : positions) {
-      positions_[pos.ticker_id] = pos;
-    }
-  }
-
-  void OnPosition(const PositionData& pos) final {
-    positions_[pos.ticker_id] = pos;
-  }
-
- private:
-  std::unordered_map<TickerId, PositionData> positions_;
-};
+auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
+auto pos = ctx->GetPosition(contract->ticker_id);
 ```
 
-还支持查询单个合约的物理持仓
+还支持查询所有物理持仓，因为涉及到拷贝，如果合约量较大性能会稍差，如果需要经常用到批量查询且对性能有要求，建议通过OnPosition回调自己维护
 
 ```cpp
-auto pos = ctx->GetPosition("FUT_SHFE_rb-202405");
+auto positions = ctx->GetPosition();
 ```
 
 ### GetLogicalPosition
 
-从数据库读取策略逻辑持仓，性能较差，只适合在策略初始化时用于查询初始持仓。如果要维护实时持仓，需要配合OnPosition回调使用，下面有个示例说明了如何维护实时的逻辑持仓
+获取单个合约的实时逻辑持仓，效率很高
 
 ```cpp
-class MyStrategy: public Strategy {
- public:
-  MyStrategy(StrategyContext* ctx) {
-    auto log_positions = ctx->GetLogicalPosition(&log_positions);
-    for (const auto& pos : log_positions) {
-      log_positions_[pos.ticker_id] = pos;
-    }
-  }
-
-  void OnPosition(const LogicalPositionData& pos) final {
-    log_positions_[pos.ticker_id] = pos;
-  }
-
- private:
-  std::unordered_map<TickerId, LogicalPositionData> log_positions_;
-};
+auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
+auto pos = ctx->GetLogicalPosition(contract->ticker_id);
 ```
 
-还支持查询单个合约的逻辑持仓
+还支持查询所有逻辑持仓，因为涉及到拷贝，如果合约量较大性能会稍差，如果需要经常用到批量查询且对性能有要求，建议通过OnPosition回调自己维护
 
 ```cpp
-auto pos = ctx->GetLogicalPosition("FUT_SHFE_rb-202405");
+auto positions = ctx->GetLogicalPosition();
 ```
 
 ### GetFills
@@ -694,7 +666,9 @@ auto pos = ctx->GetLogicalPosition("FUT_SHFE_rb-202405");
 
 ```cpp
 auto fills = ctx->GetFills();  // 获取策略所有成交
-auto rb2405_fills = ctx->GetFills("FUT_SHFE_rb-202405");  // 获取策略在rb2405上的成交
+
+auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
+auto rb2405_fills = ctx->GetFills(contract->ticker_id);  // 获取策略在rb2405上的成交
 ```
 
 ### GetAccount
@@ -959,19 +933,31 @@ class MyStrategy final : public Strategy {
   }
 
   void OnTick(const TickData& tick) final {
-    if (satisfied condition) {
-      nlohmann::json algo_params{
-        {"algo_name", "TWAP"},
-        {...}
-      };
-      algo_trading_service_.AddAlgoOrder();
-    }
     algo_trading_service_.OnTick(tick);
+    if (satisfied condition) {
+      nlohmann::json algo_params{{"algo_name", "Iceberg"},
+                                 {"instr", contract_->instr},
+                                 {"direction", "Buy"},
+                                 {"offset", "Auto"},
+                                 {"volume", 100},
+                                 {"timeout", 10 * 1000000},
+                                 {"price_depth", 0.5},
+                                 {"interval", 2 * 1000000},
+                                 {"start_time", 0},
+                                 {"order_type", "price_preferred"},
+                                 {"display_vol", 0.2},
+                                 {"price_tick_added", 0},
+                                 {"reject_interval", 3 * 1000000},
+                                 {"imb_sum_ratio", 0.5},
+                                 {"imb_level1_ratio", 0.5},
+                                 {"traded_interval", 1 * 1000000},
+                                 {"allow_pending_up_limit", false},
+                                 {"allow_pending_down_limit", true}};
+      algo_trading_service_.AddAlgoOrder(algo_params);
+    }
   }
 
-  void OnOrder(const OrderResponse& order) final {
-    algo_trading_service_.OnOrder(order);
-  }
+  void OnOrder(const OrderResponse& order) final { algo_trading_service_.OnOrder(order); }
 
  private:
   StrategyContext* ctx_;
@@ -982,7 +968,7 @@ class MyStrategy final : public Strategy {
 ```
 ### 支持的算法类型：
 
-所有参数中的时间单位均是ms
+所有参数中的时间单位均是微秒
 
 每个算法都共有的参数
 
@@ -993,7 +979,7 @@ class MyStrategy final : public Strategy {
   "direction": "Buy",
   "offset": "Auto",
   "volume": 10000,
-  "timeout": "30000"
+  "timeout": "30000000"
 }
 ```
 
@@ -1013,10 +999,10 @@ class MyStrategy final : public Strategy {
 ```json
 {
   "algo_name": "TWAP",
-  "start_time": 1705064340608,
-  "end_time": 1705064400888,
-  "duration": 30000,
-  "reject_interval": 500,
+  "start_time": 1705064340608000,
+  "end_time": 1705064400888000,
+  "duration": 30000000,
+  "reject_interval": 500000,
   "price_tick_added": 1
 }
 ```
@@ -1025,17 +1011,17 @@ class MyStrategy final : public Strategy {
 
 简介：根据成交量加权平均市价，间隔时间发单
 
-具体参数解释：和TWAP参数一致，除了duration需要最小间隔分钟，如 algo_params["duration"] = 60000
+具体参数解释：和TWAP参数一致，除了duration需要最小间隔分钟，如 algo_params["duration"] = 60000000
 
 示例
 
 ```json
 {
   "algo_name": "VWAP",
-  "start_time": 1705064340608,
-  "end_time": 1705064400888,
-  "duration": 60000,
-  "reject_interval": 500,
+  "start_time": 1705064340608000,
+  "end_time": 1705064400888000,
+  "duration": 60000000,
+  "reject_interval": 500000,
   "price_tick_added": 1
 }
 ```
@@ -1054,10 +1040,10 @@ class MyStrategy final : public Strategy {
 ```json
 {
   "algo_name":"IS",
-  "total_time": 60000,
+  "total_time": 60000000,
   "risk_aversion": 0.5,
-  "duration": 10000,
-  "reject_interval": 500,
+  "duration": 10000000,
+  "reject_interval": 500000,
   "price_tick_added": 1
 }
 ```
@@ -1086,11 +1072,11 @@ class MyStrategy final : public Strategy {
 {
   "algo_name":"Iceberg",
   "price_depth": 0.2,
-  "interval": 2000,
-  "start_time": 1705064340608,
+  "interval": 2000000,
+  "start_time": 1705064340608000,
   "display_vol": 0.2,
-  "reject_interval": 500,
-  "traded_interval": 500,
+  "reject_interval": 500000,
+  "traded_interval": 500000,
   "imb_sum_ratio": 0,
   "imb_level1_ratio": 0,
   "price_tick_added": 0,
@@ -1112,7 +1098,7 @@ class MyStrategy final : public Strategy {
 ```json
 {
   "algo_name":"Sniper",
-  "start_time": 1705064340608,
+  "start_time": 1705064340608000,
   "aggressiveness": 100
 }
 ```

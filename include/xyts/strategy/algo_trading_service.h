@@ -14,7 +14,7 @@ class AlgoTradingService {
  public:
   explicit AlgoTradingService(StrategyContext* ctx);
 
-  ~AlgoTradingService() = default;
+  ~AlgoTradingService();
 
   AlgoOrderId AddAlgoOrder(const nlohmann::json& algo_params);
 
