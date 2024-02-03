@@ -24,6 +24,8 @@ g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 - 交易系统使用O3优化
 - 每个接口或模块尽可能做成可测试的，单元测试尽可能覆盖所有代码
 - 回测暂时不支持pystrategy，后续会加上
+- 支持接收沪深逐笔数据，且提供了沪深逐笔实时合成更高频率快照（在盘口的基础上还提供了更丰富的逐笔因子）的模块
+- 高频的强化学习Env即将上线
 
 ## 简介
 
@@ -405,7 +407,7 @@ nohup ./backtester ../conf/backtester.yaml ../log/backtester.log 2>&1 &
 
 - trader
 - market_center
-- 各个行情gateway程序用于收行情（只需要在market_center之后启动，与策略之间的启动顺序没有要求，而且可以随时启停），如果有多个源的话可以启动多个以提高可靠性
+- 各个data_feed程序用于收行情（只需要在market_center之后启动，与策略之间的启动顺序没有要求，而且可以随时启停），如果有多个源的话可以启动多个以提高可靠性
 
 配置好交易系统及策略后，可以在bin目录下执行以下命令启动交易系统
 ```sh
@@ -479,11 +481,15 @@ Physical Position -> Logical Position -> Order -> Trade
 
 如果策略在初始化时调用了SubscribeChannels订阅了一些channel的话，如果该channel中有策略感兴趣数据进来，会通过OnMessage通知策略，策略需要自行对数据进行解包
 
+### OnCommand
+
+策略收到自定义控制命令
+
 ## StrategyContext用法说明
 
 ### AddTimeout & AddPeriodicCallback
 
-XYTS内置高精度定时器功能，可以在策略构造时或任意回调里使用，并支持取消
+XYTS内置高精度定时器功能，可以在策略构造时或任意回调里使用，并支持取消。该功能完美支持回测。
 
 单次的超时回调
 
@@ -503,8 +509,10 @@ ctx->AddTimeout(std::chrono::seconds{1}, [this](auto) {});
 
 ```cpp
 // 每500微秒执行1次
-auto timer_id = ctx->AddPeriodicCallback(std::chrono::microseconds{500}, [this](auto) {
+auto timer_id = ctx->AddPeriodicCallback(std::chrono::microseconds{500}, [this](auto id) {
   // do sth.
+  // 不需要了的话既可以在外面取消，也可以在内部取消
+  // ctx->RemoveTimer(id);
 });
 // 如果不需要了，可以移除定时器
 ctx->RemoveTimer(timer_id);
@@ -895,7 +903,7 @@ class MyStrategy final : public Strategy {
     assert(contract);
     // 持仓方向为多头，基准价格为3900，初始的止损价格为3880，当价格进一步上涨时，止损价格会被抬高，
     // 当最新价跌破追踪止损价格时，卖出2手来止损
-    trailing_stop_manager_.SetTrailingStop(contract->ticker_id, Direction::kBuy, 2, 3900, 20);
+    trailing_stop_manager_.AddTrailingStop(contract->ticker_id, Direction::kBuy, 2, 3900, 20);
   }
 
   void OnTick(const TickData& tick) final { trailing_stop_manager_.OnTick(tick); }
