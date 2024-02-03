@@ -16,7 +16,7 @@ class TrailingStopManager {
 
   ~TrailingStopManager();
 
-  TrailingStopTaskId SetTrailingStop(uint32_t ticker_id, Direction position_direction, int volume,
+  TrailingStopTaskId AddTrailingStop(TickerId ticker_id, Direction position_direction, int volume,
                                      double base_price, double stop_distance);
 
   void CancelTrailingStop(TrailingStopTaskId id);
