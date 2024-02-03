@@ -31,19 +31,6 @@ class BadTradingCalendar : public std::runtime_error {
 /**
  * @brief 通用交易日历
  * TradingCalendar只是从已有的交易日历文件中加载交易日数据，提供相应的utils函数，并不能自动地生成交易日历。
- *
- * @example
- * @code {.cpp}
- * int main() {
- *   TradingCalendar trading_calendar;
- *   // 从默认路径加载交易日历
- *   if (!trading_calendar.Load()) {
- *     return -1;
- *   }
- *   ASSERT_TRUE(trading_calendar.IsTradingday("2022-09-26"));
- * }
- * @endcode
- *
  */
 class TradingCalendar {
  public:
@@ -75,41 +62,6 @@ class TradingCalendar {
    * @param trading_date_strings iso格式的交易日字符串数组
    */
   explicit TradingCalendar(const std::vector<std::string>& trading_date_strings);
-
-  /**
-   * @brief 从csv文件加载交易日历
-   * 调用Load函数会导致新加载的交易日历替换掉旧的。
-   * @param calendar_file 交易日历文件路径
-   * @return true 加载成功
-   * @return false 加载失败，该TradingCalendar不可用，可以调用Load重新加载
-   */
-  bool Load(std::string_view calendar_file);
-
-  /**
-   * @brief 加载交易日的date数组
-   * date数组中的所有date都被视为交易日，可以重复，也不要求顺序。
-   * @param trading_dates 交易日数组
-   * @return true 加载成功
-   * @return false 加载失败
-   */
-  bool Load(const std::vector<xyu::datetime::date>& trading_dates);
-
-  /**
-   * @brief 加载交易日的date数组
-   * date数组中的所有date都被视为交易日，可以重复，也不要求顺序。
-   * @param trading_date_strings iso格式的交易日字符串数组
-   * @return true 加载成功
-   * @return false 加载失败
-   */
-  bool Load(const std::vector<std::string>& trading_date_strings);
-
-  /**
-   * @brief 该TradingCalendar是否已成功加载
-   *
-   * @return true 已成功加载
-   * @return false 未加载或加载失败
-   */
-  operator bool() const { return good_; }
 
   /**
    * @brief 某日是否为交易日
@@ -250,7 +202,6 @@ class TradingCalendar {
   }
 
  private:
-  bool good_ = false;
   std::set<xyu::datetime::date> trading_dates_;
 };
 
