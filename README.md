@@ -345,14 +345,14 @@ day_sessions:
   - begin_time: '13:30'
     end_time: '15:01'
 initial_fund: 100000000  # 起始资金
-contract_type: comm_deri  # 商品期货
-contract_dir: ../data/contract  # xydata合约表路径
+contract_file: ../data/contracts_%Y%m%d.csv  # xydata合约表路径
 holiday_dir: ../data/holiday  # xydata交易日历路径
 # 行情数据配置
 data_feed:
   name: csv_data_feed
   data_dir: ../data/tick  # xydata csv格式的快照数据目录
-match_engine: xyts.match_engine.simple  # 撮合引擎，simple为对价撮合
+matching_engine:
+  name: simple_matching_engine  # simple为对价撮合
 # 手续费配置
 commission:
 - instr: 'FUT_SHFE_rb.+?'
@@ -432,6 +432,8 @@ python3 manager.py start_strategy strategy_spread_arb_01
 ### OnMessage
 
 如果策略在初始化时调用了SubscribeTopics订阅了一些topics的话，如果该topics中有策略感兴趣数据进来，会通过OnMessage通知策略，策略需要自行对数据进行解包
+
+也可以通过OnMessage接收来自data_feed_api的自定义行情
 
 ### OnCommand
 
