@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fmt/format.h"
-#include "xyts/component/trade_utility.h"
+#include "xyts/utils/trade_utility.h"
 
 namespace fmt {
 
@@ -20,5 +20,6 @@ DEFINE_BASE_TYPE_FORMATTER(Direction);
 DEFINE_BASE_TYPE_FORMATTER(Offset);
 DEFINE_BASE_TYPE_FORMATTER(OrderType);
 DEFINE_BASE_TYPE_FORMATTER(ProductType);
+DEFINE_BASE_TYPE_FORMATTER(ErrorCode);
 
 }  // namespace fmt

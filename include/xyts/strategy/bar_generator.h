@@ -4,8 +4,8 @@
 #include <memory>
 #include <vector>
 
-#include "xyts/base/contract_table.h"
-#include "xyts/base/market_data.h"
+#include "xyts/core/contract_table.h"
+#include "xyts/core/market_data.h"
 #include "xyts/strategy/strategy_context.h"
 
 namespace xyts::strategy {

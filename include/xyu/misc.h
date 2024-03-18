@@ -2,6 +2,8 @@
 
 #include <x86intrin.h>
 
+#include <cstdint>
+
 namespace xyu {
 
 #if defined(__s390__) || defined(__s390x__)
@@ -12,7 +14,7 @@ namespace xyu {
 #define BOOST_LOCKFREE_CACHELINE_BYTES 64
 #endif
 
-constexpr int kCacheLineSize = BOOST_LOCKFREE_CACHELINE_BYTES;
+constexpr std::size_t kCacheLineSize = BOOST_LOCKFREE_CACHELINE_BYTES;
 
 inline void cpu_pause() { _mm_pause(); }
 

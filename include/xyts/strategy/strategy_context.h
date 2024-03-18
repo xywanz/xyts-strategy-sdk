@@ -6,21 +6,21 @@
 #include <vector>
 
 #include "nlohmann/json.hpp"
-#include "xyts/base/timeout_manager.h"
-#include "xyts/base/trade_msg.h"
+#include "xyts/core/timeout_manager.h"
+#include "xyts/core/trade_msg.h"
 #include "xyts/strategy/strategy_param_manager.h"
 
 namespace xyts::strategy {
 
 class StrategyContext : public TimeoutManager {
  public:
-  virtual ~StrategyContext() {}
+  virtual ~StrategyContext() = default;
 
-  virtual bool Subscribe(const std::vector<std::string>& patterns) = 0;
+  virtual void Subscribe(const std::vector<std::string>& patterns) = 0;
 
-  virtual bool SubscribeChannels(const std::vector<ChannelSubscriptionInfo>& channels) = 0;
+  virtual void SubscribeTopics(const std::vector<Topic>& topics) = 0;
 
-  virtual bool RegisterMsgSender() = 0;
+  virtual void RegisterPublisher() = 0;
 
   virtual std::chrono::microseconds GetWallTime() const = 0;
 
@@ -28,22 +28,22 @@ class StrategyContext : public TimeoutManager {
 
   virtual void Stop() = 0;
 
-  virtual ClientOrderId SendOrder(TickerId ticker_id, int volume, Direction direction,
+  virtual ClientOrderId SendOrder(ContractId contract_id, Volume volume, Direction direction,
                                   Offset offset, OrderType type, double price,
                                   std::chrono::microseconds timeout = kDefaultOrderTimeout,
                                   uint64_t user_data = 0) = 0;
 
-  ClientOrderId Buy(TickerId ticker_id, int volume, OrderType type, double price,
+  ClientOrderId Buy(ContractId contract_id, Volume volume, OrderType type, double price,
                     std::chrono::microseconds timeout = kDefaultOrderTimeout,
                     uint64_t user_data = 0) {
-    return SendOrder(ticker_id, volume, Direction::kBuy, Offset::kAuto, type, price, timeout,
+    return SendOrder(contract_id, volume, Direction::kBuy, Offset::kAuto, type, price, timeout,
                      user_data);
   }
 
-  ClientOrderId Sell(TickerId ticker_id, int volume, OrderType type, double price,
+  ClientOrderId Sell(ContractId contract_id, Volume volume, OrderType type, double price,
                      std::chrono::microseconds timeout = kDefaultOrderTimeout,
                      uint64_t user_data = 0) {
-    return SendOrder(ticker_id, volume, Direction::kSell, Offset::kAuto, type, price, timeout,
+    return SendOrder(contract_id, volume, Direction::kSell, Offset::kAuto, type, price, timeout,
                      user_data);
   }
 
@@ -52,29 +52,28 @@ class StrategyContext : public TimeoutManager {
   virtual void ResetOrderTimeout(ClientOrderId client_order_id,
                                  std::chrono::microseconds timeout) = 0;
 
-  virtual std::vector<PositionData> GetPosition() const = 0;
+  virtual std::vector<PositionData> GetPositions() const = 0;
 
-  virtual PositionData GetPosition(TickerId ticker_id) const = 0;
+  virtual PositionData GetPosition(ContractId contract_id) const = 0;
 
-  virtual std::vector<LogicalPositionData> GetLogicalPosition() const = 0;
+  virtual std::vector<LogicalPositionData> GetLogicalPositions() const = 0;
 
-  virtual LogicalPositionData GetLogicalPosition(TickerId ticker_id) const = 0;
+  virtual LogicalPositionData GetLogicalPosition(ContractId contract_id) const = 0;
 
-  virtual std::vector<Fill> GetFills(TickerId ticker_id) const = 0;
+  virtual std::vector<Fill> GetFills(ContractId contract_id) const = 0;
 
   virtual std::vector<Fill> GetFills() const = 0;
 
   virtual Account GetAccount(const std::string& account_name) const = 0;
 
-  virtual bool SendMessage(uint16_t channel_id, uint16_t data_type, const void* data,
-                           std::size_t size, uint16_t version) = 0;
+  virtual bool PublishMessage(uint32_t channel_id, uint32_t data_type, const void* data,
+                              std::size_t size) = 0;
 
   virtual std::string GetStrategyName() const = 0;
 
   virtual StrategyParamManager* GetParamManager() = 0;
 
-  static constexpr std::chrono::microseconds kDefaultOrderTimeout =
-      std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::days{1});
+  static constexpr std::chrono::microseconds kDefaultOrderTimeout = std::chrono::days{1};
 };
 
 using EventId = StrategyContext::EventId;

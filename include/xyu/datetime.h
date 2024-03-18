@@ -35,12 +35,6 @@ class timedelta {
             int hours = 0, int weeks = 0);
   timedelta(const timedelta& other);
 
-  timedelta(std::chrono::weeks weeks);
-  timedelta(std::chrono::days days);
-  timedelta(std::chrono::hours hours);
-  timedelta(std::chrono::minutes minutes);
-  timedelta(std::chrono::seconds seconds);
-  timedelta(std::chrono::milliseconds milliseconds);
   timedelta(std::chrono::microseconds microseconds);
 
   static timedelta min() { return timedelta(-kMaxDeltaDays); }
@@ -106,7 +100,6 @@ class date {
   static date today();
   static date fromisoformat(const std::string& date_string);
   static date fromtimestamp(std::chrono::microseconds timestamp);
-  static date fromtimestamp(std::chrono::seconds timestamp);
   static date fromordinal(int ordinal);
   static date fromisocalendar(const IsoCalendarDate& iso_calendar);
 
@@ -131,7 +124,7 @@ class date {
   date& operator-=(const timedelta& delta);
   timedelta operator-(const date& rhs) const;
 
-  std::string strftime(const std::string& format) const;
+  std::string strftime(const std::string_view format) const;
 
   std::string ctime() const;
   std::string isoformat() const;
@@ -204,7 +197,7 @@ class time {
 
   std::strong_ordering operator<=>(const time& rhs) const = default;
 
-  std::string strftime(const std::string& format) const;
+  std::string strftime(const std::string_view format) const;
 
   /**
    * @brief 转换成HH:MM:SS格式的字符串
@@ -264,7 +257,7 @@ class datetime {
    * @return datetime
    * @exception std::invalid_argument 解析失败
    */
-  static datetime strptime(const std::string& date_string, const std::string& format);
+  static datetime strptime(const std::string_view date_string, const std::string_view format);
 
   /**
    * @brief 从微秒时间戳创建datetime
@@ -347,7 +340,7 @@ class datetime {
    * @return std::string
    * @exception std::invalid_argument conv failed
    */
-  std::string strftime(const std::string& format) const;
+  std::string strftime(const std::string_view format) const;
 
   std::string ctime() const;
 

@@ -50,10 +50,10 @@ class TradingCalendar {
   }
 
   std::vector<xyu::datetime::date> TradingDaysBetween(const xyu::datetime::date& begin_date,
-                                                     const xyu::datetime::date& end_date);
+                                                      const xyu::datetime::date& end_date);
 
   std::vector<xyu::datetime::date> TradingDaysBetween(const std::string& begin_date_string,
-                                                     const std::string& end_date_string) {
+                                                      const std::string& end_date_string) {
     return TradingDaysBetween(xyu::datetime::date::fromisoformat(begin_date_string),
                               xyu::datetime::date::fromisoformat(end_date_string));
   }

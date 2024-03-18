@@ -3,7 +3,8 @@
 #include <cstring>
 #include <string>
 
-#include "xyts/base/trade_msg.h"
+#include "xyts/core/error_code.h"
+#include "xyts/core/trade_msg.h"
 
 namespace xyts {
 
@@ -34,14 +35,8 @@ inline bool IsValidOffset(Offset offset) {
           static_cast<uint8_t>(Offset::kInternalTrade));
 }
 
-// 是否是限价类型的订单，除了市价单和best单，其他类型的订单都需要提供价格
-inline bool IsLimitType(OrderType type) {
-  return type != OrderType::kMarket && type != OrderType::kBest;
-}
-
 inline bool IsValidOrderType(OrderType type) {
-  return static_cast<uint8_t>(type) <= static_cast<uint8_t>(OrderType::kFal) &&
-         static_cast<uint8_t>(type) >= static_cast<uint8_t>(OrderType::kMarket);
+  return static_cast<uint8_t>(type) < static_cast<uint8_t>(OrderType::kOrderTypeNum);
 }
 
 inline std::string ToString(Direction direction) {
@@ -76,22 +71,24 @@ inline std::string ToString(Offset offset) {
 
 inline std::string ToString(OrderType order_type) {
   switch (order_type) {
-    case OrderType::kMarket:
-      return "Market";
-    case OrderType::kLimit:
+    case OrderType::kLimit: {
       return "Limit";
-    case OrderType::kBest:
-      return "Best";
-    case OrderType::kFak:
+    }
+    case OrderType::kMarket: {
+      return "Market";
+    }
+    case OrderType::kFAK: {
       return "FAK";
-    case OrderType::kFok:
+    }
+    case OrderType::kFOK: {
       return "FOK";
-    case OrderType::kBestLimit:
-      return "BestLimit";
-    case OrderType::kFal:
-      return "Fal";
-    default:
+    }
+    case OrderType::kMakerOnly: {
+      return "MakerOnly";
+    }
+    default: {
       return "Unknown";
+    }
   }
 }
 
@@ -130,6 +127,8 @@ inline std::string ToString(ProductType type) {
       return "Bond";
     case ProductType::kFund:
       return "Fund";
+    case ProductType::kSpot:
+      return "Spot";
     default:
       return "Unknown";
   }
@@ -164,20 +163,16 @@ inline Offset Str2Offset(const std::string& str) {
 }
 
 inline OrderType Str2OrderType(const std::string& str) {
-  if (str == "Market") {
-    return OrderType::kMarket;
-  } else if (str == "Limit") {
+  if (str == "Limit") {
     return OrderType::kLimit;
-  } else if (str == "Best") {
-    return OrderType::kBest;
+  } else if (str == "Market") {
+    return OrderType::kMarket;
   } else if (str == "FAK") {
-    return OrderType::kFak;
+    return OrderType::kFAK;
   } else if (str == "FOK") {
-    return OrderType::kFok;
-  } else if (str == "BestLimit") {
-    return OrderType::kBestLimit;
-  } else if (str == "Fal") {
-    return OrderType::kFal;
+    return OrderType::kFOK;
+  } else if (str == "MakerOnly") {
+    return OrderType::kMakerOnly;
   } else {
     return OrderType::kUnknown;
   }
@@ -216,6 +211,8 @@ inline ProductType Str2ProductType(const std::string& str) {
     return ProductType::kBond;
   } else if (strncasecmp(str.c_str(), "Fund", str.size()) == 0) {
     return ProductType::kFund;
+  } else if (strncasecmp(str.c_str(), "Spot", str.size()) == 0) {
+    return ProductType::kSpot;
   } else {
     return ProductType::kUnknown;
   }

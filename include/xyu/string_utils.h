@@ -7,54 +7,28 @@
 #include <tuple>
 #include <vector>
 
-namespace xyts {
+namespace xyu {
 
-inline void StringSplit(std::string_view str, std::string_view delim,
-                        std::vector<std::string>* results, bool skip_empty_elem = true) {
+inline std::vector<std::string_view> StringSplit(std::string_view str, std::string_view delim,
+                                                 bool skip_empty_elem = true) {
+  std::vector<std::string_view> results;
   std::size_t start = 0, end;
   while ((end = str.find(delim, start)) != std::string::npos) {
     auto size = end - start;
     if (size != 0) {
-      results->emplace_back(std::string(str.cbegin() + start, size));
+      results.emplace_back(str.cbegin() + start, size);
     } else if (!skip_empty_elem) {
-      results->emplace_back("");
+      results.emplace_back("");
     }
     start = end + delim.size();
   }
 
   if (start != str.size()) {
-    results->emplace_back(std::string(str.cbegin() + start, str.size() - start));
+    results.emplace_back(str.cbegin() + start, str.size() - start);
   } else if (!skip_empty_elem) {
-    results->emplace_back("");
+    results.emplace_back("");
   }
-}
-
-inline void StringSplit(std::string_view str, std::string_view delim,
-                        std::vector<std::string_view>* results, bool skip_empty_elem = true) {
-  std::size_t start = 0, end;
-  while ((end = str.find(delim, start)) != std::string::npos) {
-    auto size = end - start;
-    if (size != 0) {
-      results->emplace_back(str.cbegin() + start, size);
-    } else if (!skip_empty_elem) {
-      results->emplace_back("");
-    }
-    start = end + delim.size();
-  }
-
-  if (start != str.size()) {
-    results->emplace_back(str.cbegin() + start, str.size() - start);
-  } else if (!skip_empty_elem) {
-    results->emplace_back("");
-  }
-}
-
-inline void StrCopy(std::span<char> dest, const std::string& src) {
-  snprintf(dest.data(), dest.size(), "%s", src.c_str());
-}
-
-inline void StrCopy(std::span<char> dest, const char* src) {
-  snprintf(dest.data(), dest.size(), "%s", src);
+  return results;
 }
 
 template <class ToTrim>
@@ -112,30 +86,6 @@ inline std::string_view TrimWhiteSpace(std::string_view sv) {
   return LTrimWhiteSpace(RTrimWhiteSpace(sv));
 }
 
-// split ip:port to tuple (ip, port)
-// example:
-//    auto [ip, port] = SplitIpPort("127.0.0.1:8888");
-//    if (port < 0) { handle error... }
-inline std::tuple<std::string_view, int> SplitIpPort(std::string_view addr) {
-  auto delim_pos = addr.find_first_of(':');
-  if (delim_pos == std::string::npos || delim_pos == 0 || delim_pos == addr.size() - 1) {
-    return {"", -1};
-  }
-
-  auto port_str = TrimWhiteSpace(addr.substr(delim_pos + 1));
-  if (port_str.empty() ||
-      std::find_if_not(port_str.begin(), port_str.end(), std::ptr_fun<int, int>(std::isdigit)) !=
-          port_str.end()) {
-    return {"", -1};
-  }
-
-  try {
-    return {TrimWhiteSpace(addr.substr(0, delim_pos)), std::stoi(std::string(port_str))};
-  } catch (...) {
-    return {"", -1};
-  }
-}
-
 inline std::string UpperCase(std::string_view sv) {
   std::string ret(sv);
   std::transform(ret.cbegin(), ret.cend(), ret.begin(), [](char c) {
@@ -144,7 +94,6 @@ inline std::string UpperCase(std::string_view sv) {
     }
     return c;
   });
-
   return ret;
 }
 
@@ -156,8 +105,7 @@ inline std::string LowerCase(std::string_view sv) {
     }
     return c;
   });
-
   return ret;
 }
 
-}  // namespace xyts
+}  // namespace xyu

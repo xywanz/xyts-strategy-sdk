@@ -1,7 +1,7 @@
 #pragma once
 
 #include "fmt/format.h"
-#include "xyts/base/log.h"
+#include "xyts/core/log.h"
 #include "xyu/datetime.h"
 
 MARK_AS_COPY_LOGGABLE(xyu::datetime::timedelta);

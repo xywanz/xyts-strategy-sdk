@@ -5,8 +5,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "xyts/base/trade_msg.h"
+#include "xyts/core/trade_msg.h"
 #include "xyu/datetime.h"
+#include "xyu/utility.h"
 
 namespace xyts {
 
@@ -16,7 +17,7 @@ namespace xyts {
 // 这些信息主要是当日的静态信息，可在盘前通过数据库或是交易API查询到
 struct Contract {
   // 内部使用的整型合约ID，从1开始连续递增
-  uint32_t ticker_id;
+  ContractId contract_id;
   // 内部使用的整型交易所ID
   ExchangeId exchange_id;
   // 内部使用的合约命名，如FUT_CCFX_IF:202112, OPT_XSHG_510300:202112:C:3.2
@@ -26,13 +27,13 @@ struct Contract {
   // 对于A股：{6位代码}.{交易所}，如600001.XSHG, 300001.XSHE
   std::string instr;
   // 该合约在交易所的命名，如IF2112, 10003325, 600001
-  std::string ticker;
+  std::string code;
   // 交易所命名，和交易所的规范一致，如CFFEX, SHFE等
   std::string exchange;
   // 该合约的类型，期货/期权/股票/...
   ProductType product_type;
   // 合约乘数
-  int contract_unit;
+  double contract_unit;
   // 最小价格变动单位
   double price_tick;
   // 当日涨停价
@@ -44,23 +45,25 @@ struct Contract {
   // 空头保证金率
   double short_margin_rate;
   // 单次限价单的最大数量
-  int max_limit_order_volume;
+  Volume max_limit_order_volume;
   // 单次限价单的最小数量
-  int min_limit_order_volume;
+  Volume min_limit_order_volume;
   // 单次市价单的最大数量
-  int max_market_order_volume;
+  Volume max_market_order_volume;
   // 单次市价单的最小数量
-  int min_market_order_volume;
+  Volume min_market_order_volume;
   // 上市日
   std::string list_date;
   // 到期日
   std::string expire_date;
 
-  // 期权独有属性
+  // ----- 衍生品独有属性 -----
   // 标的的合约类型
   ProductType underlying_type;
   // 标的的内部命名
   std::string underlying_symbol;
+
+  // ----- 期权独有属性 -----
   // 行权日
   std::string exercise_date;
   // 行权价
@@ -69,34 +72,13 @@ struct Contract {
 
 using ContractPtr = const Contract*;
 
-class ContractTable {
+class ContractTable : public xyu::NonCopyableNonMoveable {
  public:
-  static bool Load(std::vector<Contract>&& vec);
-  static bool Load(const std::string& file);
+  static void Load(std::vector<Contract>&& vec);
+
+  static void Load(const std::string& file);
+
   static std::size_t size() { return Instance()->contracts_.size(); }
-
-  static ContractPtr GetByTicker(const std::string& ticker) {
-    auto& ticker2contract = Instance()->ticker2contract_;
-    auto iter = ticker2contract.find(ticker);
-    if (iter == ticker2contract.end()) {
-      return nullptr;
-    }
-    return iter->second;
-  }
-
-  // 该接口效率不高，一般只在初识化时使用
-  // pattern:
-  // 用于匹配instr的正则表达式(C++ regex)，以开头用于标识，如OPT_XSHG_510050.+?
-  static void GetByPattern(const std::string& pattern, std::vector<ContractPtr>* results);
-  static std::vector<ContractPtr> GetByPattern(const std::string& pattern);
-
-  static ContractPtr GetById(uint32_t ticker_id) {
-    auto& contracts = Instance()->contracts_;
-    if (ticker_id == 0 || ticker_id > contracts.size()) {
-      return nullptr;
-    }
-    return &contracts[ticker_id - 1];
-  }
 
   static ContractPtr GetByInstrument(const std::string& instr) {
     auto& instr2contract = Instance()->instr2contract_;
@@ -107,6 +89,30 @@ class ContractTable {
     return iter->second;
   }
 
+  // 对于多个交易所中存在同一个code的情况，应该转成instr后再通过GetByInstrument获取。
+  // 这里提供这个接口主要是为了方便国内的交易，且该接口应该只用于trade_api和data_feed
+  // 的实现中
+  static ContractPtr GetByCode(const std::string& code) {
+    auto& code2contract = Instance()->code2contract_;
+    auto iter = code2contract.find(code);
+    if (iter == code2contract.end()) {
+      return nullptr;
+    }
+    return iter->second;
+  }
+
+  // 该接口效率不高，一般只在初识化时使用
+  // pattern: 用于匹配instr的正则表达式(C++ regex)，如OPT_XSHG_510050.+?
+  static std::vector<ContractPtr> GetByPattern(const std::string& pattern);
+
+  static ContractPtr GetById(ContractId contract_id) {
+    auto& contracts = Instance()->contracts_;
+    if (contract_id >= contracts.size()) {
+      return nullptr;
+    }
+    return &contracts[contract_id];
+  }
+
   static const std::vector<Contract>& GetAllContracts() { return Instance()->contracts_; }
 
  private:
@@ -115,13 +121,13 @@ class ContractTable {
     return &ct;
   }
 
- private:
   std::vector<Contract> contracts_;
-  std::unordered_map<std::string, Contract*> ticker2contract_;
   std::unordered_map<std::string, Contract*> instr2contract_;
+  std::unordered_map<std::string, Contract*> code2contract_;
 };
 
-bool LoadContractsFromCsv(const std::filesystem::path& file, std::vector<Contract>* contracts);
-bool StoreContractsToCsv(const std::filesystem::path& file, const std::vector<Contract>& contracts);
+void LoadContractsFromCsv(const std::filesystem::path& file, std::vector<Contract>* contracts);
+
+void StoreContractsToCsv(const std::filesystem::path& file, const std::vector<Contract>& contracts);
 
 }  // namespace xyts

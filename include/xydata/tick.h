@@ -8,23 +8,26 @@
 #include <vector>
 
 #include "xydata/trading_calendar.h"
-#include "xyts/base/market_data.h"
+#include "xyts/core/market_data.h"
+#include "xyts/core/trade_msg.h"
 #include "xyu/datetime.h"
 
 namespace xydata {
+
+using Volume = xyts::Volume;
 
 struct Tick {
   std::string instr;
   std::chrono::microseconds local_timestamp;
   std::chrono::microseconds exchange_timestamp;
   double last_price;
-  uint64_t volume;
+  Volume volume;
   double turnover;
-  uint64_t open_interest;
+  Volume open_interest;
   double ask[xyts::kMarketL2Depth];
   double bid[xyts::kMarketL2Depth];
-  int ask_volume[xyts::kMarketL2Depth];
-  int bid_volume[xyts::kMarketL2Depth];
+  Volume ask_volume[xyts::kMarketL2Depth];
+  Volume bid_volume[xyts::kMarketL2Depth];
 };
 
 class TickLoader {

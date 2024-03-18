@@ -3,9 +3,9 @@
 #include <memory>
 #include <optional>
 
-#include "xyts/base/contract_table.h"
-#include "xyts/base/market_data.h"
-#include "xyts/base/trade_msg.h"
+#include "xyts/core/contract_table.h"
+#include "xyts/core/market_data.h"
+#include "xyts/core/trade_msg.h"
 #include "xyts/strategy/strategy_context.h"
 
 namespace xyts::strategy {
@@ -39,7 +39,7 @@ class OrderExecMethod {
 
 class ConditionOrder {
  public:
-  ConditionOrder(uint32_t ticker_id, Direction direction, Offset offset, int volume,
+  ConditionOrder(ContractId contract_id, Direction direction, Offset offset, Volume volume,
                  double trigger_price,
                  OrderExecMethod exec_method = OrderExecMethod::ConsiderationPrice());
 
@@ -51,7 +51,7 @@ class ConditionOrder {
 
   Offset offset() const { return offset_; }
 
-  int volume() const { return volume_; }
+  Volume volume() const { return volume_; }
 
   double trigger_price() const { return trigger_price_; }
 
@@ -61,7 +61,7 @@ class ConditionOrder {
   ContractPtr contract_;
   Direction direction_;
   Offset offset_;
-  int volume_;
+  Volume volume_;
   double trigger_price_;
   OrderExecMethod exec_method_;
 };
@@ -72,14 +72,14 @@ struct ConditionOrderExecutionDetails {
 
   ConditionOrder condition_order;
   ConditionOrderId condition_order_id;
-  int traded_volume = 0;
-  double traded_amount = 0;
+  Volume accum_trade_volume = 0;
+  double accum_trade_amount = 0;
   bool running = true;
   bool waiting_for_stop = false;
 
-  std::unordered_map<uint64_t, OrderResponse> orders{};
+  std::unordered_map<ClientOrderId, OrderResponse> orders{};
   std::size_t active_order_count = 0;
-  int active_volume = 0;
+  Volume active_volume = 0;
 };
 
 class ConditionOrderManager {

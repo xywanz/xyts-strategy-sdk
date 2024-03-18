@@ -5,11 +5,12 @@
 #include <type_traits>
 
 #include "quill/Quill.h"
-#include "xyts/base/formatter.h"
+#include "xyts/core/formatter.h"
+#include "xyu/utility.h"
 
 namespace xyts {
 
-class XyLogger {
+class XyLogger : public xyu::NonCopyableNonMoveable {
  public:
   explicit XyLogger(quill::Logger* logger) : logger_(logger) {}
 
@@ -20,26 +21,18 @@ class XyLogger {
   quill::Logger* logger_ = nullptr;
 };
 
-class XyLog {
- private:
-  XyLog(const XyLog&) = delete;
-  XyLog& operator=(const XyLog&) = delete;
-
-  XyLog();
-
+class XyGlobalLogger : public xyu::NonCopyableNonMoveable {
  public:
-  ~XyLog();
-  static XyLog& Instance() {
-    static XyLog log;
-    return log;
+  ~XyGlobalLogger();
+
+  static XyGlobalLogger& Instance() {
+    static XyGlobalLogger logger;
+    return logger;
   }
-  /*
-  logfile 日志文件名  logfile_2021-07-19.log
-  loglevel 日志等级 trace debug info warn error fatal
-  max_files 按天存储，最多保留多少天
-  */
+
+  // logfile: 日志文件名, {logfile}_2021-07-19.log
+  // loglevel: 日志级别, trace|debug|info|warn|error|fatal
   void Init(const std::string& logfile, const std::string& loglevel = "info");
-  void Flush();
 
   // dynamically set log level. thread safe
   bool set_log_level(const std::string& loglevel);
@@ -49,18 +42,18 @@ class XyLog {
   XyLogger* logger() { return logger_.get(); }
 
  private:
+  XyGlobalLogger();
+
   std::unique_ptr<XyLogger> logger_ = nullptr;
 };
 
-#define XY_LOG_INSTANCE ::xyts::XyLog::Instance()
-#define XY_LOGGER XY_LOG_INSTANCE.logger()
-#define XY_LOGGER_FLUSH XY_LOG_INSTANCE.Flush()
+void InitGlobalLogger(const std::string& logfile, const std::string& loglevel = "info");
 
-inline void InitLogger(const std::string& logfile, const std::string& loglevel = "info") {
-  XY_LOG_INSTANCE.Init(logfile, loglevel);
-}
+void FlushLog();
 
 std::shared_ptr<XyLogger> GetCustomLogger(const std::string& logfile);
+
+#define XY_GLOBAL_LOGGER ::xyts::XyGlobalLogger::Instance().logger()
 
 #define LOGGER_LOG_TRACE_L3(_logger, args...) QUILL_LOG_TRACE_L3(_logger->logger(), args)
 #define LOGGER_LOG_TRACE_L2(_logger, args...) QUILL_LOG_TRACE_L2(_logger->logger(), args)
@@ -72,15 +65,15 @@ std::shared_ptr<XyLogger> GetCustomLogger(const std::string& logfile);
 #define LOGGER_LOG_ERROR(_logger, args...) QUILL_LOG_ERROR(_logger->logger(), args)
 #define LOGGER_LOG_FATAL(_logger, args...) QUILL_LOG_CRITICAL(_logger->logger(), args)
 
-#define LOG_TRACE_L3(args...) LOGGER_LOG_TRACE_L3(XY_LOGGER, args)
-#define LOG_TRACE_L2(args...) LOGGER_LOG_TRACE_L2(XY_LOGGER, args)
-#define LOG_TRACE_L1(args...) LOGGER_LOG_TRACE_L1(XY_LOGGER, args)
-#define LOG_TRACE(args...) LOGGER_LOG_TRACE(XY_LOGGER, args)
-#define LOG_DEBUG(args...) LOGGER_LOG_DEBUG(XY_LOGGER, args)
-#define LOG_WARN(args...) LOGGER_LOG_WARN(XY_LOGGER, args)
-#define LOG_INFO(args...) LOGGER_LOG_INFO(XY_LOGGER, args)
-#define LOG_ERROR(args...) LOGGER_LOG_ERROR(XY_LOGGER, args)
-#define LOG_FATAL(args...) LOGGER_LOG_FATAL(XY_LOGGER, args)
+#define LOG_TRACE_L3(args...) LOGGER_LOG_TRACE_L3(XY_GLOBAL_LOGGER, args)
+#define LOG_TRACE_L2(args...) LOGGER_LOG_TRACE_L2(XY_GLOBAL_LOGGER, args)
+#define LOG_TRACE_L1(args...) LOGGER_LOG_TRACE_L1(XY_GLOBAL_LOGGER, args)
+#define LOG_TRACE(args...) LOGGER_LOG_TRACE(XY_GLOBAL_LOGGER, args)
+#define LOG_DEBUG(args...) LOGGER_LOG_DEBUG(XY_GLOBAL_LOGGER, args)
+#define LOG_WARN(args...) LOGGER_LOG_WARN(XY_GLOBAL_LOGGER, args)
+#define LOG_INFO(args...) LOGGER_LOG_INFO(XY_GLOBAL_LOGGER, args)
+#define LOG_ERROR(args...) LOGGER_LOG_ERROR(XY_GLOBAL_LOGGER, args)
+#define LOG_FATAL(args...) LOGGER_LOG_FATAL(XY_GLOBAL_LOGGER, args)
 
 #define LOG_COUNTER _XY_log_counter
 #define LOGGER_LOG_EVERY_N(_logger, _loglevel, N, args...) \
@@ -92,7 +85,7 @@ std::shared_ptr<XyLogger> GetCustomLogger(const std::string& logfile);
     LOG_COUNTER++;                                         \
   } while (0)
 
-#define LOG_EVERY_N(_loglevel, N, args...) LOGGER_LOG_EVERY_N(XY_LOGGER, _loglevel, N, args)
+#define LOG_EVERY_N(_loglevel, N, args...) LOGGER_LOG_EVERY_N(XY_GLOBAL_LOGGER, _loglevel, N, args)
 
 #define LOGGER_LOG_TRACE_EVERY_N(_logger, N, args...) LOGGER_LOG_EVERY_N(_logger, TRACE, N, args)
 #define LOGGER_LOG_DEBUG_EVERY_N(_logger, N, args...) LOGGER_LOG_EVERY_N(_logger, DEBUG, N, args)
@@ -120,7 +113,7 @@ std::shared_ptr<XyLogger> GetCustomLogger(const std::string& logfile);
   } while (0)
 
 #define LOG_INTERVAL(_loglevel, N, args...) \
-  LOGGER_LOG_INTERVAL(XY_LOGGER, _loglevel, interval_us, args)
+  LOGGER_LOG_INTERVAL(XY_GLOBAL_LOGGER, _loglevel, interval_us, args)
 
 #define LOGGER_LOG_TRACE_INTERVAL(_logger, interval_us, args...) \
   LOGGER_LOG_INTERVAL(_logger, TRACE, interval_us, args)

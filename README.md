@@ -19,7 +19,7 @@ g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 会继续升级至完全支持c++20的g++版本，尽可能跟进最新的g++版本，后续会考虑打包成docker镜像
 
 几点说明：
-- 不支持其他平台，即使使用g++ 11.3.0也可能会有问题。可考虑支持Clang及AppleClang，但VC++绝无可能
+- 不支持其他平台，即使使用g++ 11.3.0也可能会有问题。可考虑支持Clang及AppleClang
 - 不支持图形界面，但提供数据推送的接口，有需要可自己对接
 - 交易系统使用O3优化
 - 每个接口或模块尽可能做成可测试的，单元测试尽可能覆盖所有代码
@@ -183,9 +183,9 @@ class StrategySpreadArbParamManager final : public ::xyts::strategy::StrategyPar
 #include "xyts/strategy/strategy_context.h"
 #include "strategy_spread_arb_param_manager.h"
 // 日志库
-#include "xyts/base/log.h"
+#include "xyts/core/log.h"
 // 合约表
-#include "xyts/base/contract_table.h"
+#include "xyts/core/contract_table.h"
 // 项目里还有很多实用的库
 // #include "xyu/datetime.h"  Python-like datetime库
 // ...
@@ -204,17 +204,8 @@ class StrategySpreadArb final : public Strategy {
 
   void OnTick(const TickData& tick) final;
 
-  // 策略物理持仓变化
-  void OnPosition(const PositionData& pos) final;
-
-  // 策略逻辑持仓变化
-  void OnPosition(const LogicalPositionData& pos) final;
-
   // 订单状态有更新
   void OnOrder(const OrderResponse& order) final;
-
-  // 发生成交
-  void OnTrade(const OrderResponse& trade) final;
 
  private:
   StrategyContext* ctx_;                  // 用于保存StrategyContext
@@ -240,9 +231,7 @@ StrategySpreadArb::StrategySpreadArb(StrategyContext* ctx)
   }
 
   // 订阅leg1和leg2的行情和持仓信息
-  if (!ctx_->Subscribe({leg1_contract_->instr, leg2_contract_->instr})) {
-    throw std::runtime_error("Failed to subscribe market data and position");
-  }
+  ctx_->Subscribe({leg1_contract_->instr, leg2_contract_->instr});
 }
 
 StrategySpreadArb::~StrategySpreadArb() {
@@ -258,7 +247,7 @@ void StrategySpreadArb::OnTick(const TickData& tick) {
   }
 
   // 这里没有考虑bid或ask没有挂单的情况，假设bid和ask价格都存在
-  if (tick.ticker_id == leg1_contract_->ticker_id) {
+  if (tick.contract_id == leg1_contract_->contract_id) {
     leg1_mid_price_ = (tick.bid[0] + tick.ask[0]) / 2;
   } else {
     // 为了简单，只在收到leg2行情的时候计算spread
@@ -268,54 +257,38 @@ void StrategySpreadArb::OnTick(const TickData& tick) {
       return;
     }
     double spread = leg1_mid_price_ - leg2_mid_price_;
-    auto pos = ctx_->GetLogicalPosition(tick.ticker_id);
+    auto pos = ctx_->GetLogicalPosition(tick.contract_id);
     if (spread >= param_->get_upper_line()) {
       // 超过上轨，如果仓位还没满做空spread
       if (pos.volume > -1) {
-        ctx_->Buy(leg2_contract_->ticker_id, 1, OrderType::kLimit,
+        ctx_->Buy(leg2_contract_->contract_id, 1, OrderType::kLimit,
                   leg2_contract_->upper_limit_price, std::chrono::microseconds{100 * 1000});
-        ctx_->Sell(leg1_contract_->ticker_id, 1, OrderType::kLimit,
+        ctx_->Sell(leg1_contract_->contract_id, 1, OrderType::kLimit,
                    leg1_contract_->lower_limit_price, std::chrono::milliseconds{100 * 1000});
       }
     } else if (spread <= param_->get_lower_line()) {
       // 跌破下轨，如果仓位还没满则做多spread
       if (pos.volume < 1) {
-        ctx_->Sell(leg2_contract_->ticker_id, 1, OrderType::kLimit,
+        ctx_->Sell(leg2_contract_->contract_id, 1, OrderType::kLimit,
                    leg2_contract_->lower_limit_price std::chrono::milliseconds{100 * 1000});
-        ctx_->Buy(leg1_contract_->ticker_id, 1, OrderType::kLimit,
+        ctx_->Buy(leg1_contract_->contract_id, 1, OrderType::kLimit,
                   leg1_contract_->upper_limit_price std::chrono::milliseconds{100 * 1000});
       }
     }
   }
 }
 
-void StrategySpreadArb::OnPosition(const PositionData& pos) {
-  LOG_INFO(
-      "{} L{}S{}",
-      pos.ticker_id == leg1_contract_->ticker_id ? leg1_contract_->instr : leg2_contract_->instr,
-      pos.long_volume, pos.short_volume);
-}
-
-void StrategySpreadArb::OnPosition(const LogicalPositionData& pos) {
-  LOG_INFO(
-      "{} {}",
-      pos.ticker_id == leg1_contract_->ticker_id ? leg1_contract_->instr : leg2_contract_->instr,
-      pos.volume);
-}
-
 void StrategySpreadArb::OnOrder(const OrderResponse& order) {
-  LOG_INFO(
-      "{} {}{} {} {} px:{:.2f} fill/total:{}/{} order_id:{}",
-      order.ticker_id == leg1_contract_->ticker_id ? leg1_contract_->instr : leg2_contract_->instr,
-      order.direction, order.offset, order.status, ErrorCodeStr(order.error_code), order.price,
-      order.traded_volume, order.original_volume, order.order_id);
-}
+  const auto* contract =
+      order.contract_id == leg1_contract_->contract_id ? leg1_contract_ : leg2_contract_;
+  LOG_INFO("{} {}{} {} {} px:{:.2f} fill/total:{}/{} order_id:{}", contract->instr, order.direction,
+           order.offset, order.status, order.error_code, order.price, order.accum_trade_volume,
+           order.original_volume, order.order_id);
 
-void StrategySpreadArb::OnTrade(const OrderResponse& trade) {
-  LOG_INFO(
-      "{} {}{} {:.2f}@{}",
-      trade.ticker_id == leg1_contract_->ticker_id ? leg1_contract_->instr : leg2_contract_->instr,
-      trade.direction, trade.offset, trade.this_traded_price, trade.this_traded);
+  if (order.current_trade_volume > 0) {
+    LOG_INFO("{} {}{} {:.2f}@{}", contract->instr, order.direction, order.offset,
+             order.current_trade_price, order.current_trade_volume);
+  }
 }
 
 // 导出策略符号，使得能通过动态库的形式加载
@@ -377,7 +350,7 @@ contract_dir: ../data/contract  # xydata合约表路径
 holiday_dir: ../data/holiday  # xydata交易日历路径
 # 行情数据配置
 data_feed:
-  name: xyts.data_feed.csv
+  name: csv_data_feed
   data_dir: ../data/tick  # xydata csv格式的快照数据目录
 match_engine: xyts.match_engine.simple  # 撮合引擎，simple为对价撮合
 # 手续费配置
@@ -424,28 +397,11 @@ python3 manager.py start_strategy strategy_spread_arb_01
 策略是由事件驱动，策略目前支持以下几种事件
 
 - Tick
-- Physical Position
-- Logical Position
 - Order
-- Trade
-
-其中帐户交易信息相关的推送有严格的顺序：
-
-Physical Position -> Logical Position -> Order -> Trade
-
-例如订单发生了成交，首先会推送物理持仓，然后是逻辑持仓，然后是订单状态，最后是成交信息
 
 ### OnTick
 
 如果策略在初始化时订阅了一些合约，那么这些合约的行情更新时会通过OnTick通知策略，策略可在OnTick中实现策略的主要逻辑
-
-### OnPosition (物理持仓)
-
-如果策略在初始化时订阅了一些合约，那么这些合约的物理持仓发生变化时会通过OnPosition通知策略
-
-### OnPosition (逻辑持仓)
-
-如果策略在初始化时订阅了一些合约，那么这些合约的逻辑持仓发生变化时会通过OnPosition通知策略
 
 ### OnOrder
 
@@ -457,10 +413,6 @@ Physical Position -> Logical Position -> Order -> Trade
 - 订单被交易所接收
 - 订单被撤销
 - 订单发生了成交（每有一笔成交都会通知一次）
-
-### OnTrade
-
-策略订单发生成交时，会通过OnTrade通知策略
 
 ### OnUpdatingParam
 
@@ -479,7 +431,7 @@ Physical Position -> Logical Position -> Order -> Trade
 
 ### OnMessage
 
-如果策略在初始化时调用了SubscribeChannels订阅了一些channel的话，如果该channel中有策略感兴趣数据进来，会通过OnMessage通知策略，策略需要自行对数据进行解包
+如果策略在初始化时调用了SubscribeTopics订阅了一些topics的话，如果该topics中有策略感兴趣数据进来，会通过OnMessage通知策略，策略需要自行对数据进行解包
 
 ### OnCommand
 
@@ -533,22 +485,22 @@ MyStrategy::MyStrategy(StrategyContext* ctx) {
 }
 ```
 
-### SubscribeChannels
+### SubscribeTopics
 
 XYTS提供了基于共享内存的低延迟消息队列，可以在策略构造函数中订阅感兴趣的channel和data_type，之后如有新消息会通过OnMessage进行推送
 
 ```cpp
 constexpr uint16_t my_channel_id = 888;
 constexpr uint16_t my_data_type = 1;
-ctx->SubscribeChannels({{my_channel_id, my_data_type}})
+ctx->SubscribeTopics({{my_channel_id, my_data_type}})
 ```
 
-### RegisterMsgSender
+### RegisterPublisher
 
 如果策略需要往消息队列发送消息，需要在策略构造时调用该函数进行注册，未注册的策略发送的消息将无法被消费
 
 ```cpp
-ctx->RegisterMsgSender()
+ctx->RegisterPublisher()
 ```
 
 ### GetWallTime
@@ -591,7 +543,7 @@ ctx->Stop();
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
 // 设置了100ms的超时
 // 返回的client_order_id可对订单进行操作，如撤单、修改订单超时等，也可以用于在回报中识别订单
-auto cli_order_id = ctx->SendOrder(contract->ticker_id, 1, Direction::kBuy, Offset::kAuto,
+auto cli_order_id = ctx->SendOrder(contract->contract_id, 1, Direction::kBuy, Offset::kAuto,
                                    OrderType::kLimit, 3900, std::chrono::microseonds{100 * 1000}); 
 ```
 
@@ -601,7 +553,7 @@ auto cli_order_id = ctx->SendOrder(contract->ticker_id, 1, Direction::kBuy, Offs
 
 ```cpp
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
-ctx->Buy(contract->ticker_id, 1, OrderType::kLimit, 3900);
+ctx->Buy(contract->contract_id, 1, OrderType::kLimit, 3900);
 ```
 
 ### Sell
@@ -610,7 +562,7 @@ ctx->Buy(contract->ticker_id, 1, OrderType::kLimit, 3900);
 
 ```cpp
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
-ctx->Sell(contract->ticker_id, 1, OrderType::kLimit, 3900);
+ctx->Sell(contract->contract_id, 1, OrderType::kLimit, 3900);
 ```
 
 ### CancelOrder
@@ -619,7 +571,7 @@ ctx->Sell(contract->ticker_id, 1, OrderType::kLimit, 3900);
 
 ```cpp
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
-auto cli_order_id = ctx->SendOrder(contract->ticker_id, 1, Direction::kBuy, Offset::kAuto,
+auto cli_order_id = ctx->SendOrder(contract->contract_id, 1, Direction::kBuy, Offset::kAuto,
                                    OrderType::kLimit, 3900, std::chrono::microseonds{100 * 1000});
 ctx->CancelOrder(cli_order_id);
 ```
@@ -630,7 +582,7 @@ ctx->CancelOrder(cli_order_id);
 
 ```cpp
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
-auto cli_order_id = ctx->SendOrder(contract->ticker_id, 1, Direction::kBuy, Offset::kAuto,
+auto cli_order_id = ctx->SendOrder(contract->contract_id, 1, Direction::kBuy, Offset::kAuto,
                                    OrderType::kLimit, 3900, std::chrono::microseonds{100 * 1000});
 // 重新设置成1s，超时是从设置的那一刻开始计算
 ctx->ResetOrderTimeout(cli_order_id, std::chrono::microseconds{1000 * 1000});
@@ -642,13 +594,18 @@ ctx->ResetOrderTimeout(cli_order_id, std::chrono::microseconds{1000 * 1000});
 
 ```cpp
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
-auto pos = ctx->GetPosition(contract->ticker_id);
+auto pos = ctx->GetPosition(contract->contract_id);
 ```
 
-还支持查询所有物理持仓，因为涉及到拷贝，如果合约量较大性能会稍差，如果需要经常用到批量查询且对性能有要求，建议通过OnPosition回调自己维护
+### GetPositions
+
+查询所有物理持仓，因为涉及到拷贝，如果合约量较大性能会稍差，如果需要经常用到批量查询且对性能有要求，建议通过OnPosition回调自己维护
 
 ```cpp
-auto positions = ctx->GetPosition();
+auto positions = ctx->GetPositions();
+for (const auto& position : positions) {
+  // ...
+}
 ```
 
 ### GetLogicalPosition
@@ -657,24 +614,29 @@ auto positions = ctx->GetPosition();
 
 ```cpp
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
-auto pos = ctx->GetLogicalPosition(contract->ticker_id);
+auto pos = ctx->GetLogicalPosition(contract->contract_id);
 ```
 
-还支持查询所有逻辑持仓，因为涉及到拷贝，如果合约量较大性能会稍差，如果需要经常用到批量查询且对性能有要求，建议通过OnPosition回调自己维护
+### GetLogicalPositions
+
+查询所有逻辑持仓，因为涉及到拷贝，如果合约量较大性能会稍差，如果需要经常用到批量查询且对性能有要求，建议通过OnPosition回调自己维护
 
 ```cpp
-auto positions = ctx->GetLogicalPosition();
+auto positions = ctx->GetLogicalPositions();
+for (const auto& position : positions) {
+  // ...
+}
 ```
 
 ### GetFills
 
-从数据库读取策略当日成交，性能较差，只适合在策略初始化时查询。如果要维护实时的成交列表，需要配合OnTrade回调使用
+从数据库读取策略当日成交，性能较差，只适合在策略初始化时查询。如果要维护实时的成交列表，需要配合OnOrder回调使用
 
 ```cpp
 auto fills = ctx->GetFills();  // 获取策略所有成交
 
 auto contract = ContractTable::GetByInstrument("FUT_SHFE_rb-202405");
-auto rb2405_fills = ctx->GetFills(contract->ticker_id);  // 获取策略在rb2405上的成交
+auto rb2405_fills = ctx->GetFills(contract->contract_id);  // 获取策略在rb2405上的成交
 ```
 
 ### GetAccount
@@ -685,15 +647,15 @@ auto rb2405_fills = ctx->GetFills(contract->ticker_id);  // 获取策略在rb240
 auto account = GetAccount("my_ctp_account");
 ```
 
-### SendMessage
+### PublishMessage
 
-在初始化时调用了RegisterMsgSender的策略可以通过SendMessage往消息队列推送消息
+在初始化时调用了RegisterPublisher的策略可以通过PublishMessage往消息队列推送消息
 
-data的最大长度有限制，定义在xyts/base/market_data.h的kMaxUserDefinedDataLen，超出的话接口会抛异常
+data的最大长度有限制，定义在xyts/core/market_data.h的kMaxTopicMessageLen，超出的话接口会抛异常
 
 ```cpp
 const char* data = "hello, world";
-ctx->SendMessage(channel_id, data_type, data, strlen(data) + 1, version);
+ctx->PublishMessage(channel_id, data_type, data, strlen(data) + 1, version);
 ```
 
 ### GetStrategyName
@@ -726,22 +688,16 @@ class MyStrategy final : public Strategy {
       : ctx_(ctx),
         param_(dynamic_cast<MyStrategyParamManager*>(ctx->GetParamManager())),
         order_manager(ctx_) {
-    if (!ctx_->Subscribe({param_->get_instr()})) {
-      throw std::runtime_error("subscribe failed");
-    }
+    ctx_->Subscribe({param_->get_instr()});
   }
 
   void OnTick(const TickData& tick) final {
     // 每次行情更新都会先撤销掉原来的订单，并在买1和卖1分别挂一手订单
-    order_manager_.SetMarket(tick.ticker_id, 1, tick.bid[0], 1, tick.ask[0]);
+    order_manager_.PlaceOrder(tick.contract_id, 1, tick.bid[0], 1, tick.ask[0]);
   }
 
   void OnOrder(const OrderResponse& rsp) final {
     order_manager_.OnOrder(rsp);
-  }
-
-  void OnTrade(const OrderResponse& trade) final {
-    order_manager_.OnTrade(trade);
   }
 
  private:
@@ -768,9 +724,7 @@ class MyStrategy final : public Strategy {
         taker_contract_(ContractTable::GetByInstrument(param_->get_taker_instr())),
         arb_manager_(ctx_, maker_contract_,
                      std::vector<ArbitrageManager::PositionRatio>{{taker_contract_, -1}}, 10, 1) {
-    if (!ctx_->Subscribe({param_->get_maker_instr(), param_->get_taker_instr()})) {
-      throw std::runtime_error("subscribe failed");
-    }
+    ctx_->Subscribe({param_->get_maker_instr(), param_->get_taker_instr()});
   }
 
   void OnTick(const TickData& tick) final {
@@ -783,14 +737,6 @@ class MyStrategy final : public Strategy {
 
   void OnOrder(const OrderResponse& rsp) final {
     arb_manager_.OnOrder(rsp);
-  }
-
-  void OnTrade(const OrderResponse& trade) final {
-    arb_manager_.OnTrade(trade);
-  }
-
-  void OnPosition(const LogicalPositionData& pos) final {
-    arb_manager_.OnPosition(pos);
   }
 
  private:
@@ -817,23 +763,19 @@ class MyStrategy final : public Strategy {
         param_(dynamic_cast<MyStrategy*>(ctx->GetParamManager())),
         contract_(ContractTable::GetByInstrument(param_->get_instr())),
         target_pos_manager_(ctx_) {
-    if (!ctx_->Subscribe({param_->get_instr()})) {
-      throw std::runtime_error("subscribe failed");
-    }
+    ctx_->Subscribe({param_->get_instr()});
   }
 
   void OnTick(const TickData& tick) final {
     if (tick.last_price > 3900) {
-      target_pos_maager_.SetTargetPosition(tick.ticker_id, -10);
+      target_pos_maager_.SetTargetPosition(tick.contract_id, -10);
     } else if (tick.last_price < 3880) {
-      target_pos_maager_.SetTargetPosition(tick.ticker_id, 10);
+      target_pos_maager_.SetTargetPosition(tick.contract_id, 10);
     }
     target_pos_manager_.OnTick(tick);
   }
 
   void OnOrder(const OrderResponse& order) final { target_pos_manager_.OnOrder(rsp); }
-
-  void OnPosition(const LogicalPositionData& pos) final { target_pos_manager_.OnPosition(pos); }
 
  private:
   StrategyContext* ctx_;
@@ -858,14 +800,12 @@ class MyStrategy final : public Strategy {
         param_(dynamic_cast<MyStrategyParamManager*>(ctx->GetParamManager())),
         contract_(ContractTable::GetByInstrument(param_->get_instr())),
         cond_ord_manager_(ctx_) {
-    if (!ctx_->Subscribe({param_->get_instr()})) {
-      throw std::runtime_error("subscribe failed");
-    }
+    ctx_->Subscribe({param_->get_instr()});
 
     const auto* contract = ContractTable::GetByInstrument(param_->get_instr());
     assert(contract);
     // 价格突破3950时买入5手
-    ConditionOrder order{contract->ticker_id, Direction::kBuy, Offset::kAuto, 5, 3950};
+    ConditionOrder order{contract->contract_id, Direction::kBuy, Offset::kAuto, 5, 3950};
     cond_ord_manager_.AddConditionOrder(order);
   }
   void OnTick(const TickData& tick) final { cond_ord_manager_.OnTick(tick); }
@@ -895,15 +835,13 @@ class MyStrategy final : public Strategy {
         param_(dynamic_cast<MyStrategyParamManager*>(ctx->GetParamManager())),
         contract_(ContractTable::GetByInstrument(param_->get_instr())),
         trailing_stop_manager_(ctx_) {
-    if (!ctx_->Subscribe({param_->get_instr()})) {
-      throw std::runtime_error("subscribe failed");
-    }
+    ctx_->Subscribe({param_->get_instr()});
 
     const auto* contract = ContractTable::GetByInstrument(param_->get_instr());
     assert(contract);
     // 持仓方向为多头，基准价格为3900，初始的止损价格为3880，当价格进一步上涨时，止损价格会被抬高，
     // 当最新价跌破追踪止损价格时，卖出2手来止损
-    trailing_stop_manager_.AddTrailingStop(contract->ticker_id, Direction::kBuy, 2, 3900, 20);
+    trailing_stop_manager_.AddTrailingStop(contract->contract_id, Direction::kBuy, 2, 3900, 20);
   }
 
   void OnTick(const TickData& tick) final { trailing_stop_manager_.OnTick(tick); }
@@ -933,9 +871,7 @@ class MyStrategy final : public Strategy {
         param_(dynamic_cast<MyStrategyParamManager*>(ctx->GetParamManager())),
         contract_(ContractTable::GetByInstrument(param_->get_instr())),
         algo_trading_service_(ctx_) {
-    if (!ctx_->Subscribe({param_->get_instr()})) {
-      throw std::runtime_error("subscribe failed");
-    }
+    ctx_->Subscribe({param_->get_instr()});
   }
 
   void OnTick(const TickData& tick) final {
@@ -1120,9 +1056,7 @@ class MyStrategy final : public Strategy {
       : ctx_(ctx),
         param_(dynamic_cast<MyStrategyParamManager*>(ctx->GetParamManager())),
         contract_(ContractTable::GetByInstrument(param_->get_instr())) {
-    if (!ctx_->Subscribe({param_->get_instr()})) {
-      throw std::runtime_error("subscribe failed");
-    }
+    ctx_->Subscribe({param_->get_instr()});
 
     // 1min K线
     bargen_ = std::make_unique<BarGenerator>(ctx_, {contract_}, 60,
@@ -1209,7 +1143,7 @@ local_timestamp,exchange_timestamp,open_interest,volume,turnover,last_price,bid_
 以comm_deri_contracts_2024-01-15.csv前几行为例来说明数据格式
 
 ```csv
-ticker_id,instr,ticker,exchange,product_type,contract_unit,price_tick,upper_limit_price,lower_limit_price,long_margin_rate,short_margin_rate,max_limit_order_volume,min_limit_order_volume,max_market_order_volume,min_market_order_volume,list_date,expire_date,underlying_type,underlying_symbol,exercise_date,exercise_price
+contract_id,instr,code,exchange,product_type,contract_unit,price_tick,upper_limit_price,lower_limit_price,long_margin_rate,short_margin_rate,max_limit_order_volume,min_limit_order_volume,max_market_order_volume,min_market_order_volume,list_date,expire_date,underlying_type,underlying_symbol,exercise_date,exercise_price
 1,FUT_SHFE_pb-202412,pb2412,SHFE,Futures,5,5,17290,15335,0.08,0.08,500,1,30,1,,2024-12-16,Unknown,,,0
 2,FUT_SHFE_rb-202401,rb2401,SHFE,Futures,10,1,4123,3730,0.2,0.2,500,30,30,30,,2024-01-15,Unknown,,,0
 3,FUT_SHFE_rb-202402,rb2402,SHFE,Futures,10,1,4008,3627,0.1,0.1,500,1,30,1,,2024-02-19,Unknown,,,0
@@ -1220,9 +1154,9 @@ ticker_id,instr,ticker,exchange,product_type,contract_unit,price_tick,upper_limi
 
 数据字段，顺序无关紧要：
 
-- ticker_id: 从1开始连续递增，主要是为了人看的时候方便对应合约，实际上随便填也没关系
+- contract_id: 从1开始连续递增，主要是为了人看的时候方便对应合约，实际上随便填也没关系
 - instr: 标准合约名
-- ticker: 合约在交易所的命名
+- code: 合约在交易所的命名
 - exchange: 交易所名
 - product_type: 产品类型, Futures/Options/Stock/...
 - contract_unit: 合约乘数

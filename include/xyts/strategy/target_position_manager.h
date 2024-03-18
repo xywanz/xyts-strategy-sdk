@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include "xyts/base/market_data.h"
-#include "xyts/base/trade_msg.h"
+#include "xyts/core/market_data.h"
+#include "xyts/core/trade_msg.h"
 #include "xyts/strategy/strategy_context.h"
 
 namespace xyts::strategy {
@@ -14,18 +14,17 @@ class TargetPositionManager {
 
   ~TargetPositionManager();
 
-  void SetTargetPosition(uint32_t ticker_id, int target_volume, bool aggressive = true,
+  void SetTargetPosition(ContractId contract_id, Volume target_volume,
+                         OrderType order_type = OrderType::kLimit, bool aggressive = true,
                          bool exec_right_now = false);
 
-  void StartTarget(uint32_t ticker_id, bool exec_right_now = false);
+  void StartTarget(ContractId contract_id, bool exec_right_now = false);
 
-  void StopTarget(uint32_t ticker_id);
+  void StopTarget(ContractId contract_id);
 
   void OnTick(const TickData& tick);
 
   void OnOrder(const OrderResponse& order);
-
-  void OnPosition(const LogicalPositionData& pos);
 
  private:
   class Impl;

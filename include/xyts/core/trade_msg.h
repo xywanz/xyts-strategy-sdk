@@ -5,7 +5,7 @@
 #include <string>
 #include <utility>
 
-#include "xyts/base/error_code.h"
+#include "xyts/core/error_code.h"
 
 namespace xyts {
 
@@ -15,7 +15,11 @@ constexpr int kMaxCompatibleProtocolVersion = kProtocolVersion;
 
 using ClientOrderId = uint64_t;
 using OrderId = uint64_t;
-using TickerId = uint32_t;
+using OrderSysId = uint64_t;
+using CancellationId = OrderId;
+using TradeId = uint64_t;
+using ContractId = uint32_t;
+using Volume = int64_t;
 
 // 交易所的英文简称
 namespace exchange {
@@ -52,23 +56,18 @@ enum class ExchangeId : uint32_t {
 
 // 订单价格类型
 enum class OrderType : uint8_t {
-  kUnknown = 0,
-  // 市价单，不同的平台对市价单的支持不同
-  kMarket = 1,
   // 限价单，指定价格的挂单，订单时限为当日有效
-  kLimit = 2,
-  // 对方最优价格的限价单
-  kBest = 3,
+  kLimit = 0,
+  // 市价单，不同的平台对市价单的支持不同
+  kMarket,
   // Fill and Kill，立即成交剩余部分立即撤单。
-  // 不同平台的实现也不同，对于CTP来说是限价单，需要指定价格
-  kFak = 4,
+  kFAK,
   // Fill or Kill，立即全部成交否则立即撤销。
-  // 不同平台的实现也不同，对于CTP来说是限价单，需要指定价格
-  kFok = 5,
-  // 本方最优价格的限价单
-  kBestLimit = 6,
-  // 最优五档转现价
-  kFal = 7,
+  kFOK,
+  // 只做maker，如果会立即成交则撤销
+  kMakerOnly,
+  kOrderTypeNum,
+  kUnknown,
 };
 
 // 交易的方向
@@ -121,6 +120,7 @@ enum class ProductType : uint8_t {
   kIndex,    // 指数
   kBond,     // 债券
   kFund,     // 基金
+  kSpot,
 };
 
 // balance = available + margin + frozen - floating_pnl
@@ -149,17 +149,17 @@ struct TradeRecord {
   std::chrono::microseconds exchange_timestamp;
   // 交易所返回的成交ID
   // 一般来说对某一合约而言是日内递增的，不同合约之间的成交ID并不一定递增
-  uint64_t trade_sys_id;
+  TradeId trade_sys_id;
   // 交易系统产生的唯一ID，日内递增且唯一
-  uint64_t order_id;
+  OrderId order_id;
   // 柜台或交易所产生的唯一ID，可用于在券商提供的客户端中对应到相应的订单
-  uint64_t order_sys_id;
+  OrderSysId order_sys_id;
   // 方向
   Direction direction;
   // 开平标志
   Offset offset;
   // 成交量
-  int volume;
+  Volume volume;
   // 成交价格
   double price;
   // 内部合约名
@@ -167,13 +167,13 @@ struct TradeRecord {
   // 该笔成交所属的物理账户名
   std::string account_name;
   // 该笔成交所属的子账户
-  std::string sub_account;
+  std::string owner;
 };
 
 // 当日历史订单记录
 struct OrderRecord {
-  uint64_t order_id;
-  uint64_t order_sys_id;
+  OrderId order_id;
+  OrderSysId order_sys_id;
   Direction direction;
   // 开平标志
   Offset offset;
@@ -181,114 +181,88 @@ struct OrderRecord {
   OrderType type;
   double price;
   // 订单的原始数量
-  int original_volume;
+  Volume original_volume;
   // 已成交数量
-  int traded_volume;
+  Volume accum_trade_volume;
   // 所有成交的volume*price*contract_unit的和
-  double traded_amount;
+  double accum_trade_amount;
   // 订单状态
   OrderStatus status;
-  // 错误码，如果有错误的话，错误码参照xyts/base/error_code.h
+  // 错误码，如果有错误的话，错误码参照xyts/core/error_code.h
   ErrorCode error_code;
-  // 发出订单的本地时间戳
-  std::chrono::microseconds insert_timestamp;
+  // 订单在本地创建的时间戳
+  std::chrono::microseconds creation_timestamp;
   // 收到订单回报的本地时间戳
-  std::chrono::microseconds accepted_timestamp;
+  std::chrono::microseconds approval_timestamp;
   // 撤销发出的本地时间戳
-  std::chrono::microseconds cancel_timestamp;
+  std::chrono::microseconds cancellation_timestamp;
   // 订单完成的本地时间戳
   std::chrono::microseconds completion_timestamp;
 
   std::string instr;
   std::string account_name;
-  std::string sub_account;
+  std::string owner;
 };
 
 struct InitialYdPosition {
-  std::string ticker;
-  int long_volume;
-  int short_volume;
+  std::string instr;
+  Volume long_volume;
+  Volume short_volume;
 };
+
+namespace trading_cmd {
 
 // 下面是strategy和trading_server之间的交互协议
 // strategy通过IPC向trading_server发送交易相关指令
 // 用于简单验证交易协议的合法性
-inline const uint32_t kTradingCmdMagic = 0x1709394;
+inline const uint32_t kTradingCommandMagic = 0x1709394;
 
 // 交易指令类型
-enum class TraderCmdType : uint32_t {
+enum class TradingCommandType : uint32_t {
   kNewOrder = 1,       // 新订单
-  kCancelOrder,        // 撤单
-  kCancelTick,         // 撤销某个合约的所有订单
-  kCancelAll,          // 撤销所有订单
   kResetOrderTimeout,  // 重置订单超时时间
 };
 
 // 订单请求
-struct TraderOrderReq {
-  uint64_t client_order_id;  // 策略端生成的订单ID
-  uint32_t ticker_id;
+struct NewOrderRequest {
+  ClientOrderId client_order_id;  // 策略端生成的订单ID
+  ContractId contract_id;
   Direction direction;
   Offset offset;
   OrderType type;
-  int volume;
+  Volume volume;
   double price;
   std::chrono::microseconds timeout;
   uint64_t user_data;  // 策略自定义数据
 };
 
-// 撤单请求
-struct TraderCancelReq {
-  uint64_t order_id;
-};
-
-// 撤单请求
-struct TraderCancelTickerReq {
-  uint32_t account_index;
-  uint32_t ticker_id;
-};
-
-// 撤单请求
-struct TraderCancelAllReq {
-  uint32_t account_index;
-};
-
-// 重置订单超时
-struct TraderResetOrderTimeoutReq {
-  uint64_t order_id;
+// 重置订单超时，同时也用于撤单
+struct OrderTimeoutResetRequest {
+  OrderId order_id;
   std::chrono::microseconds timeout;
 };
 
-// 通知
-struct TraderNotification {
-  uint64_t signal;
-};
-
 // 交易指令
-struct TraderCommand {
+struct TradingCommand {
   uint32_t magic;  // 简单验证指令的合法性
-  TraderCmdType type;
-  bool without_check;
-  int conn_id;  // 用于在Trader找到具体策略实例
+  TradingCommandType type;
   union {
-    TraderOrderReq order_req;
-    TraderCancelReq cancel_req;
-    TraderCancelTickerReq cancel_ticker_req;
-    TraderCancelAllReq cancel_all_req;
-    TraderResetOrderTimeoutReq reset_order_timeout_req;
-    TraderNotification notification;
+    NewOrderRequest new_order_request;
+    OrderTimeoutResetRequest order_timeout_reset_request;
   };
 };
+
+}  // namespace trading_cmd
 
 // 订单回报
 struct OrderResponse {
   // 策略生成的订单号，即SendOrder/Buy/Sell返回的那个订单号
   // 每次运行时id唯一，多次重启之间并不保证唯一，不同策略之间也不保证唯一
-  uint64_t client_order_id;
+  ClientOrderId client_order_id;
   // trader生成的订单号，日内唯一递增，策略间保持唯一，重启后也能保证唯一
-  uint64_t order_id;
+  OrderId order_id;
   // 合约ID
-  uint32_t ticker_id;
+  ContractId contract_id;
   // 交易方向
   Direction direction;
   // 开平标志
@@ -300,20 +274,19 @@ struct OrderResponse {
   // 委托价格
   double price;
   // 原始委托数量
-  int original_volume;
-  // 已成交数量，剩余未成交数量 = original_volume - traded_volume
-  int traded_volume;
+  Volume original_volume;
+  // 已成交数量，剩余未成交数量 = original_volume - accum_trade_volume
+  Volume accum_trade_volume;
   // 用户自定义数据，发单时填写，回报带回
   uint64_t user_data;
 
   // 只有本次发生了成交才会有下面三个字段
   // 本次成交数量
-  // FIXME: uint32_t?
-  uint32_t this_traded;
+  Volume current_trade_volume;
   // 本次成交价格
-  double this_traded_price;
+  double current_trade_price;
   // 本次成交的交易所时间戳
-  std::chrono::microseconds trade_timestamp;  // 在算法交易回测加速中，统计每笔单完成时间
+  std::chrono::microseconds trade_timestamp;
 
   std::chrono::microseconds local_timestamp;
 
@@ -333,32 +306,29 @@ struct OrderResponse {
   bool IsAllTraded() const { return status == OrderStatus::kAllTraded; }
   bool IsCanceled() const { return status == OrderStatus::kCanceled; }
   bool IsError() const { return status == OrderStatus::kRejected; }
-  bool IsPositionNotEnough() const {
-    return status == OrderStatus::kRejected && error_code == ErrorCode::kPositionNotEnough;
-  }
 
-  int ActiveVolume() const { return IsActive() ? original_volume - traded_volume : 0; }
+  Volume ActiveVolume() const { return IsActive() ? original_volume - accum_trade_volume : 0; }
 };
 
 // 物理持仓
 struct PositionData {
-  uint32_t ticker_id;
-  int long_volume;
-  int long_yd_volume;
-  int short_volume;
-  int short_yd_volume;
+  ContractId contract_id;
+  Volume long_volume;
+  Volume long_yd_volume;
+  Volume short_volume;
+  Volume short_yd_volume;
 };
 
 // 逻辑持仓
 struct LogicalPositionData {
-  uint32_t ticker_id;
-  int volume;
+  ContractId contract_id;
+  Volume volume;
 };
 
 // 策略从Trader收到的消息的类型
 enum StrategyMsgType : uint32_t {
   kOrderResponse,
-  kPhysicalPosition,
+  kPosition,
   kLogicalPosition,
 };
 
@@ -367,21 +337,21 @@ struct StrategyMsg {
   StrategyMsgType msg_type;
   union {
     OrderResponse order_rsp;
-    PositionData physical_position;
+    PositionData position;
     LogicalPositionData logical_position;
   };
 };
 
-struct ChannelSubscriptionInfo {
-  uint16_t channel_id;
-  uint16_t data_type;
+struct Topic {
+  uint32_t channel_id;
+  uint32_t data_type;
 };
 
-constexpr int kChannelShift = 16;
+constexpr int kChannelShift = 32;
 
 using Fill = TradeRecord;
 
-static_assert(std::is_trivially_copyable_v<TraderCommand>);
+static_assert(std::is_trivially_copyable_v<trading_cmd::TradingCommand>);
 static_assert(std::is_trivially_copyable_v<StrategyMsg>);
 
 }  // namespace xyts

@@ -23,7 +23,7 @@ struct Bar {
   double low_price;
   double high_price;
 
-  uint64_t volume;
+  Volume volume;
   double turnover;
 };
 

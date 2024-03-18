@@ -42,7 +42,7 @@ enum class ErrorCode : uint8_t {
     return #name;               \
   }
 
-inline const char* ErrorCodeStr(ErrorCode error_code) {
+inline const char* ToString(ErrorCode error_code) {
   switch (error_code) {
     __ERROR_CODE_CASE(NoError);
     __ERROR_CODE_CASE(InvalidOrder);

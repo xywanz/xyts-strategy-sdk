@@ -3,9 +3,9 @@
 #include <memory>
 #include <vector>
 
-#include "xyts/base/contract_table.h"
-#include "xyts/base/market_data.h"
-#include "xyts/base/trade_msg.h"
+#include "xyts/core/contract_table.h"
+#include "xyts/core/market_data.h"
+#include "xyts/core/trade_msg.h"
 #include "xyts/strategy/strategy_context.h"
 
 namespace xyts::strategy {
@@ -38,9 +38,14 @@ class ArbitrageManager {
     int ratio;
   };
 
+  struct Options {
+    bool use_market_order_to_take = false;
+    bool whole_day = false;
+  };
+
   explicit ArbitrageManager(StrategyContext* ctx, ContractPtr maker_contract,
-                            const std::vector<PositionRatio>& takers, int max_pos,
-                            int max_order_volume);
+                            const std::vector<PositionRatio>& takers, Volume max_pos,
+                            Volume max_order_volume, Options options);
 
   ~ArbitrageManager();
 
@@ -48,9 +53,9 @@ class ArbitrageManager {
 
   void OnOrder(const OrderResponse& order);
 
-  void OnTrade(const OrderResponse& trade);
+  double GetLongMakerPrice() const;
 
-  void OnPosition(const LogicalPositionData& pos);
+  double GetShortMakerPrice() const;
 
  private:
   class Impl;
