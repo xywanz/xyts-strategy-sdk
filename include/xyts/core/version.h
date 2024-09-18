@@ -4,7 +4,7 @@
 
 namespace xyts {
 
-const char* kGitCommitInfo = "hash: 96293e288f26450283c7f18eb3af05e35fc7879d date: 2024-09-12 21:28:28 +0800 ref:  (HEAD -> master, local/master)\n";
+const char* kGitCommitInfo = "hash: 96e1b14c8881ff27832e31b25f9a053146e175ee date: 2024-09-19 00:03:03 +0800 ref:  (HEAD -> master, local/master)\n";
 const char* kCxxCompilerVersion = "g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0";
 const char* kCMakeCompilerId = "GNU";
 const char* kCMakeCxxCompiler = "/usr/bin/g++-11";

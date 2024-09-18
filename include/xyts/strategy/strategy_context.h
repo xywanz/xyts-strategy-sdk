@@ -145,7 +145,7 @@ class StrategyContext : public TimeoutManager {
   virtual std::vector<DepthData> GetTodayMarketData(
       const std::vector<std::string>& patterns,
       std::chrono::microseconds begin_ts = std::chrono::microseconds{0},
-      std::chrono::microseconds end_ts = std::chrono::microseconds{-1UL}) const = 0;
+      std::chrono::microseconds end_ts = std::chrono::microseconds::max()) const = 0;
 
   virtual bool PublishMessage(TopicId topic, const void* data, std::size_t size) = 0;
 

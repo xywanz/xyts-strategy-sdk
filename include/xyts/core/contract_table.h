@@ -89,11 +89,11 @@ class ContractTable : public xyu::NonCopyableNonMoveable {
 
   static ContractPtr GetByInstrument(const std::string& instr) {
     auto& instr2contract = Instance().instr2contract_;
-    auto iter = instr2contract.find(instr);
-    if (iter == instr2contract.end()) {
+    if (auto it = instr2contract.find(instr); it != instr2contract.end()) {
+      return it->second;
+    } else {
       return nullptr;
     }
-    return iter->second;
   }
 
   // 对于多个交易所中存在同一个code的情况，应该转成instr后再通过GetByInstrument获取。
@@ -101,11 +101,11 @@ class ContractTable : public xyu::NonCopyableNonMoveable {
   // 的实现中
   static ContractPtr GetByCode(const std::string& code) {
     auto& code2contract = Instance().code2contract_;
-    auto iter = code2contract.find(code);
-    if (iter == code2contract.end()) {
+    if (auto it = code2contract.find(code); it != code2contract.end()) {
+      return it->second;
+    } else {
       return nullptr;
     }
-    return iter->second;
   }
 
   // 该接口效率不高，一般只在初识化时使用
@@ -120,6 +120,11 @@ class ContractTable : public xyu::NonCopyableNonMoveable {
       return nullptr;
     }
     return &contracts[contract_id];
+  }
+
+  static ContractPtr At(ContractId contract_id) {
+    auto& contracts = Instance().contracts_;
+    return &contracts.at(contract_id);
   }
 
   static const std::vector<Contract>& GetAllContracts() { return Instance().contracts_; }

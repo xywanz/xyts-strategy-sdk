@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <set>
 #include <stdexcept>
@@ -47,7 +48,7 @@ class TradingCalendar {
    * 会视为加载失败。
    * @param calendar_file 交易日历文件路径
    */
-  explicit TradingCalendar(std::string_view calendar_file);
+  explicit TradingCalendar(const std::filesystem::path& calendar_file);
 
   /**
    * @brief 加载交易日的date数组

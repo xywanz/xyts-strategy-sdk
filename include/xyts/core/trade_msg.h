@@ -138,7 +138,7 @@ struct Account {
   double available;          // 可用资金
   double margin;             // 保证金
   double frozen;             // 冻结金额
-  double commission;         // 手续费
+  double fee;                // 手续费
   double floating_pnl;       // 账户浮动盈亏
   double realized_pnl;       // 当日已实现的盈亏
   std::string account_id;    // 资金账户号
@@ -153,7 +153,7 @@ struct TradeRecord {
   std::chrono::microseconds exchange_timestamp;
   // 交易所返回的成交ID
   // 一般来说对某一合约而言是日内递增的，不同合约之间的成交ID并不一定递增
-  TradeId trade_sys_id;
+  TradeId trade_id;
   // 交易系统产生的唯一ID，日内递增且唯一
   OrderId order_id;
   // 柜台或交易所产生的唯一ID，可用于在券商提供的客户端中对应到相应的订单

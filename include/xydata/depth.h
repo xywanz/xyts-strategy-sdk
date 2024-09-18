@@ -11,6 +11,7 @@
 #include "xyts/core/market_data.h"
 #include "xyts/core/trade_msg.h"
 #include "xyu/datetime.h"
+#include "xyu/filesystem.h"
 
 namespace xydata {
 
@@ -33,9 +34,9 @@ struct Depth {
 class DepthLoader {
  public:
   explicit DepthLoader(const std::filesystem::path& xydata_dir)
-      : depth_dir_(xydata_dir / "depth"),
-        xydata_dir_(xydata_dir),
-        calendar_(xydata_dir / "holiday") {}
+      : xydata_dir_(xyu::fs::ExpandUser(xydata_dir)),
+        depth_dir_(xydata_dir_ / "depth"),
+        calendar_(xydata_dir_ / "holiday") {}
 
   std::vector<Depth> LoadDepths(const std::string& instr, const xyu::datetime::date& begin_date,
                                 const xyu::datetime::date& end_date,
@@ -75,8 +76,8 @@ class DepthLoader {
                   const xyu::datetime::date& begin_date, const xyu::datetime::date& end_date,
                   bool nothrow_if_not_exists);
 
-  std::filesystem::path depth_dir_;
   std::filesystem::path xydata_dir_;
+  std::filesystem::path depth_dir_;
   TradingCalendar calendar_;
 };
 

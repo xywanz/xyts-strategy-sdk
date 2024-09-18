@@ -12,7 +12,8 @@ namespace xydata {
 
 class BadHolidayFile : public std::runtime_error {
  public:
-  explicit BadHolidayFile(const std::string& path) : runtime_error("Bad holiday file: " + path) {}
+  explicit BadHolidayFile(const std::filesystem::path& path)
+      : runtime_error("Bad holiday file: " + path.string()) {}
 };
 
 class TradingCalendar {

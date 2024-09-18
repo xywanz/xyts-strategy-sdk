@@ -11,6 +11,7 @@
 #include "xydata/sessions.h"
 #include "xydata/trading_calendar.h"
 #include "xyu/datetime.h"
+#include "xyu/filesystem.h"
 
 namespace xydata {
 
@@ -39,10 +40,11 @@ std::vector<BarInterval> SplitToBarIntervals(const std::vector<Session>& session
 class BarLoader {
  public:
   explicit BarLoader(const std::filesystem::path& xydata_dir)
-      : bar_dir_(xydata_dir / "bar"),
-        calendar_(xydata_dir / "holiday"),
-        depth_loader_(xydata_dir),
-        contract_mgr_(xydata_dir) {}
+      : xydata_dir_(xyu::fs::ExpandUser(xydata_dir)),
+        bar_dir_(xydata_dir_ / "bar"),
+        calendar_(xydata_dir_ / "holiday"),
+        depth_loader_(xydata_dir_),
+        contract_mgr_(xydata_dir_) {}
 
   std::vector<Bar> LoadBars(const std::string& instr, std::chrono::seconds period,
                             const xyu::datetime::date& begin_date,
@@ -77,6 +79,7 @@ class BarLoader {
   std::vector<Bar> GenerateBarsFromDepths(const std::string& instr, std::chrono::seconds period,
                                           const xyu::datetime::date& date);
 
+  std::filesystem::path xydata_dir_;
   std::filesystem::path bar_dir_;
   TradingCalendar calendar_;
   DepthLoader depth_loader_;

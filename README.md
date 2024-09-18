@@ -398,6 +398,134 @@ nohup ./backtester ../conf/backtester.yaml ../log/backtester.log 2>&1 &
 - market_center
 - 各个data_feed程序用于收行情（只需要在market_center之后启动，与策略之间的启动顺序没有要求，而且可以随时启停），如果有多个源的话可以启动多个以提高可靠性
 
+交易系统实盘运行目录如下，配置放在conf目录下，account下的每个yaml文件都对应一个账户，data_feed目录下的每一个yaml文件都对应一个行情源
+
+```bash
+xyts/
+    bin/
+        trader
+        market_center
+        ...
+    conf/
+        global.yaml
+        data_collector.yaml
+        market_center.yaml
+        trader.yaml
+        account/
+            my_ctp.yaml
+            ...
+        data_feed/
+            ctp.yaml
+            ...
+    lib/
+        ...
+    data/
+        ...
+    log/
+        ...
+```
+
+下面分别介绍每一个配置文件
+
+```yaml
+# global.yaml 必须有改配置文件
+
+# 可以配置多个合约文件
+contract_file:  # 必填
+  - ../conf/fut_contracts.csv
+  - ../conf/opt_contracts.csv
+
+# 也可以只配置一个文件
+# contract_file: ../conf/contracts.csv
+
+xyts_db_address: ../data/xyts.db  # 必填
+trader_service_port: 10086  # 可选
+market_service_port: 10087  # 可选
+strategy_param_directory: ../conf  # 可选
+reduce_cpu_usage: false  # 可选，cpu核数足够、需要极低延迟的情况可以用false
+```
+
+```yaml
+# data_collector.yaml  可选，不需要数据收集上报功能的话可以不创建该配置文件
+
+# 下面只配置了一个企业微信通知插件，交易系统中所有的告警消息都会发给对应的robot
+handlers:
+  - name: wechat_sender
+    wechat_robot_key: aaaaaaaa-bbbb-cccc-dddd-123456789012
+```
+
+```yaml
+# market_center.yaml  可选，可以没有该配置文件
+
+# 配置一些插件
+slow_task_manager:
+  slow_tasks:
+    - type: market_data_db_writer  # 会将当日行情实时写入db，以供策略通过GetTodayMarketData来查询
+
+market_data_filters:
+  - name: duplicate_filter  # 多个行情源择优去重
+    errata_ms: 50
+  - name: timeout_filter  # 丢弃延迟太久的行情
+    timeout_ms: 3000
+```
+
+```yaml
+# trader.yaml  可选，可以没有该配置文件
+
+#
+```
+
+下面先只介绍ctp的配置，其他交易和行情的接口之后再介绍
+
+```yaml
+# account/my_ctp.yaml  文件名可随意，后缀是.yaml就行
+
+api: ctp
+name: simnow
+broker_id: 9999
+app_id: 'simnow_client_test'
+auth_code: '0000000000000000'
+investor_id: '123456'
+password: 'abc123456'
+front_addr: tcp://180.168.146.187:10201
+
+# 风控配置
+risk_list:
+  - name: general
+    publish_statistics: false
+    order_count_limit: 20000
+    cancel_count_limit: 20000
+    contract_order_count_limits:
+      'FUT_SHFE_.+?': 2050
+    contract_cancel_count_limits:
+      'FUT_SHFE_.+?': 2050
+  - name: general_position
+    position_limits:
+      '.+?': 20000
+  - name: logical_position
+    position_limits:
+      - strategy: '.+?'
+        limits:
+          - 'FUT_.+?': 20
+
+# 该账户下交易的合约列表
+tradable_list:
+  - '.+?'
+```
+
+```yaml
+# data_feed/ctp.yaml  文件名可随意，只要以.yaml为后缀即可
+
+name: ctp
+enable: true
+enable_data_recorder: true
+dll_path: ../lib/libctp_data_feed_api.so
+ctp_dll_path: ../lib/libthostmduserapi_se.so
+front_addr: tcp://180.168.146.187:10211
+subscription_list:
+  - '.+?'
+```
+
 配置好交易系统及策略后，可以在bin目录下执行以下命令启动交易系统
 ```sh
 # 生成合约表
@@ -702,7 +830,8 @@ auto rb2405_orders = ctx->GetOrders(contract->contract_id);  // 获取策略在r
 
 ### GetAccount
 
-查询帐户资金信息，这个一般用得比较少，需要填入配置的帐户名称
+查询账户资金信息，这个一般用得比较少，需要填入配置的账户名称。
+TODO: 开发一个单独的模块用来实时计算账户资金以及策略资金信息
 
 ```cpp
 auto account = GetAccount("my_ctp_account");
@@ -714,6 +843,19 @@ auto account = GetAccount("my_ctp_account");
 
 ```cpp
 double pnl = GetPnl();
+```
+
+### GetTodayMarketData
+
+读取当日的历史行情，一般只用于策略初始化时调用
+
+```cpp
+// 获取当日所有rb合约的所有depth行情
+ctx->GetTodayMarketData({"FUT_SHFE_rb-.+?"});
+
+// 获取最近30分钟所有rb合约的depth行情
+auto now = ctx->GetWallTime();
+ctx->GetTodayMarketData({"FUT_SHFE_rb-.+?"}, now - std::chrono::minutes{30}, now);
 ```
 
 ### PublishMessage
@@ -1195,13 +1337,14 @@ class BarGenerator {
 ```
 
 ```cpp
-// bar_generator.cpp
 #include "xyts/strategy/bar_generator.h"
 
+#include <cassert>
 #include <optional>
 #include <string>
 
 #include "xydata/bar.h"
+#include "xyts/utils/math_utils.h"
 #include "xyu/datetime.h"
 
 namespace dt = xyu::datetime;
@@ -1225,6 +1368,8 @@ class BarGenHelper {
 
   double last_turnover() const { return last_depth_ ? last_depth_->turnover : 0; }
 
+  double last_price() const { return last_depth_ ? last_depth_->last_price : 0; }
+
   std::chrono::seconds period() const { return bar_.period; }
 
  private:
@@ -1241,9 +1386,11 @@ class BarGenHelper {
 
   std::optional<DepthData> last_depth_;
   BarData bar_{};
-  double open_px_ = std::numeric_limits<double>::quiet_NaN();
-  double high_px_ = std::numeric_limits<double>::quiet_NaN();
-  double low_px_ = std::numeric_limits<double>::quiet_NaN();
+  // TODO: 目前用0表示无效值，但更好的办法是用NaN表示无效值，因为出现过价格为0或是为负数的情况。
+  // 如果要改为用NaN，那么行情数据也需要用NaN来表示无效值。
+  double open_px_ = 0;
+  double high_px_ = 0;
+  double low_px_ = 0;
 };
 
 BarGenHelper::BarGenHelper(StrategyContext* ctx, ContractPtr contract, std::chrono::seconds period,
@@ -1303,26 +1450,20 @@ void BarGenHelper::UpdateBar(const DepthData& depth) {
   if (interval_idx_ >= intervals_.size()) {
     return;
   }
-  if (depth.volume == 0) {
-    return;
-  }
 
   const auto& interval = intervals_[interval_idx_];
   if (depth.exchange_timestamp < interval[0]) {
     return;
   }
   if (depth.exchange_timestamp > interval[1]) {
+    CloseBar(interval[2]);
+    OpenBar(depth);
     interval_idx_++;
-    if (!last_depth_) {
-      OpenBar(depth);
-    } else {
-      CloseBar(interval[2]);
-      OpenBar(depth);
-    }
   } else {
-    if (!last_depth_ || std::isnan(open_px_)) {
+    if (!last_depth_ || IsZero(open_px_)) {
       OpenBar(depth);
     } else {
+      assert(!IsZero(depth.last_price));
       high_px_ = std::max(high_px_, depth.last_price);
       low_px_ = std::min(low_px_, depth.last_price);
     }
@@ -1337,18 +1478,19 @@ void BarGenHelper::OpenBar(const DepthData& depth) {
 }
 
 void BarGenHelper::CloseBar(std::chrono::microseconds bar_time) {
-  if (std::isnan(open_px_)) {
-    OpenBar(*last_depth_);
-  }
   bar_.exchange_timestamp = bar_time;
   bar_.local_timestamp = ctx_->GetWallTime();
-  bar_.volume = last_depth_->volume;
-  bar_.turnover = last_depth_->turnover;
+  bar_.volume = last_volume();
+  bar_.turnover = last_turnover();
   bar_.open_price = open_px_;
   bar_.high_price = high_px_;
   bar_.low_price = low_px_;
-  bar_.close_price = last_depth_->last_price;
+  bar_.close_price = last_price();
   cb_(bar_);
+
+  open_px_ = 0;
+  high_px_ = 0;
+  low_px_ = 0;
 }
 
 void BarGenHelper::CheckBar(std::chrono::microseconds now_ts) {
@@ -1358,12 +1500,7 @@ void BarGenHelper::CheckBar(std::chrono::microseconds now_ts) {
   const auto& interval = intervals_[interval_idx_];
   if (now_ts >= interval[1] + std::chrono::seconds{1}) {
     interval_idx_++;
-    if (last_depth_) {
-      CloseBar(interval[2]);
-      open_px_ = std::numeric_limits<double>::quiet_NaN();
-      high_px_ = std::numeric_limits<double>::quiet_NaN();
-      low_px_ = std::numeric_limits<double>::quiet_NaN();
-    }
+    CloseBar(interval[2]);
   }
 }
 
@@ -1406,6 +1543,7 @@ void BarGenerator::Impl::AddBarPeriod(const std::vector<std::string>& patterns,
     helpers.emplace_back(helper);
     all_helpers_.emplace_back(helper);
   }
+  ctx_->SubscribeMarketData(patterns);
 }
 
 BarGenerator::Impl::~Impl() { ctx_->RemoveTimer(timer_id_); }

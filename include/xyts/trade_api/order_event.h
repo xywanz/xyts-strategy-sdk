@@ -31,7 +31,7 @@ struct CancellationRejectedEvent {
 struct TradeEvent {
   std::chrono::microseconds local_timestamp;
   std::chrono::microseconds exchange_timestamp;
-  TradeId trade_sys_id;
+  TradeId trade_id;
   OrderId order_id;
   OrderSysId order_sys_id;
   Volume volume;

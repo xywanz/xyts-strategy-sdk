@@ -66,10 +66,8 @@ struct MarketData {
   MarketDataType type;
 
   union {
-    MarketDataHeader header;
     DepthData depth_data;
     BarData bar_data;
-
     TopicMessage topic_message;
   };
 };
