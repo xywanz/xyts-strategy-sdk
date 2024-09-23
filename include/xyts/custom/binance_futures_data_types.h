@@ -11,6 +11,7 @@ namespace xyts::binance::futures {
 constexpr inline uint64_t kAggTradeChannel = 1000000UL << 32;
 constexpr inline uint64_t kBookTickerChannel = 1000001UL << 32;
 constexpr inline uint64_t kKlineChannel = 1000002UL << 32;
+constexpr inline uint64_t kMiniTickerChannel = 1000003UL << 32;
 
 struct AggTrade {
   ContractId contract_id;
@@ -54,6 +55,17 @@ struct Kline {
   double quota_asset_volume;
   double taker_buy_base_asset_volume;
   double taker_buy_quote_asset_volume;
+};
+
+struct MiniTicker24Hr {
+  ContractId contract_id;
+  std::chrono::microseconds event_time;
+  double open_price;
+  double close_price;
+  double high_price;
+  double low_price;
+  double total_traded_base_asset_volume;
+  double total_traded_quote_asset_volume;
 };
 
 }  // namespace xyts::binance::futures

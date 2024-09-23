@@ -40,6 +40,4 @@ class MatchingEngine {
   std::vector<OrderEventListener*> listeners_;
 };
 
-using MatchingEnginePtr = std::unique_ptr<MatchingEngine>;
-
 }  // namespace xyts

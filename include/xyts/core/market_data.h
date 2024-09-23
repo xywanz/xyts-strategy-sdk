@@ -16,7 +16,7 @@ constexpr int kMarketL2Depth = 10;
 
 constexpr int kSourceLen = 12;
 
-constexpr int kMaxTopicMessageLen = 488;
+constexpr int kMaxTopicMessageLen = 480;
 
 struct MarketDataHeader {
   char source[kSourceLen];  // 行情源
@@ -52,6 +52,7 @@ struct BarData : public MarketDataHeader {
 
 struct TopicMessage {
   TopicId topic;
+  std::chrono::microseconds timestamp;
   std::size_t size;
   char buffer[kMaxTopicMessageLen];
 };

@@ -7,6 +7,8 @@
 
 namespace xyts {
 
+using MatchingEnginePtr = std::unique_ptr<MatchingEngine>;
+
 MatchingEnginePtr CreateMatchingEngine(const std::string& name, const YAML::Node& conf);
 
 MatchingEnginePtr LoadMatchingEngineFromDll(const std::filesystem::path& path,

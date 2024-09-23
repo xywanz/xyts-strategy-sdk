@@ -14,7 +14,9 @@ class Timeline {
 
   void RemoveEvent(int64_t id);
 
-  void GoForward(int64_t t);
+  void GoTo(int64_t timepoint);
+
+  void GoForward(int64_t distance);
 
   void Reset();
 

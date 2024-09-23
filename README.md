@@ -428,7 +428,7 @@ xyts/
 下面分别介绍每一个配置文件
 
 ```yaml
-# global.yaml 必须有改配置文件
+# global.yaml 必须有该配置文件
 
 # 可以配置多个合约文件
 contract_file:  # 必填
@@ -450,7 +450,7 @@ reduce_cpu_usage: false  # 可选，cpu核数足够、需要极低延迟的情�
 
 # 下面只配置了一个企业微信通知插件，交易系统中所有的告警消息都会发给对应的robot
 handlers:
-  - name: wechat_sender
+  - type: wechat_sender
     wechat_robot_key: aaaaaaaa-bbbb-cccc-dddd-123456789012
 ```
 
@@ -463,9 +463,9 @@ slow_task_manager:
     - type: market_data_db_writer  # 会将当日行情实时写入db，以供策略通过GetTodayMarketData来查询
 
 market_data_filters:
-  - name: duplicate_filter  # 多个行情源择优去重
+  - type: duplicate_filter  # 多个行情源择优去重
     errata_ms: 50
-  - name: timeout_filter  # 丢弃延迟太久的行情
+  - type: timeout_filter  # 丢弃延迟太久的行情
     timeout_ms: 3000
 ```
 
@@ -491,7 +491,7 @@ front_addr: tcp://180.168.146.187:10201
 
 # 风控配置
 risk_list:
-  - name: general
+  - type: general
     publish_statistics: false
     order_count_limit: 20000
     cancel_count_limit: 20000
@@ -499,10 +499,10 @@ risk_list:
       'FUT_SHFE_.+?': 2050
     contract_cancel_count_limits:
       'FUT_SHFE_.+?': 2050
-  - name: general_position
+  - type: general_position
     position_limits:
       '.+?': 20000
-  - name: logical_position
+  - type: logical_position
     position_limits:
       - strategy: '.+?'
         limits:
@@ -847,7 +847,7 @@ double pnl = GetPnl();
 
 ### GetTodayMarketData
 
-读取当日的历史行情，一般只用于策略初始化时调用
+读取当日的历史行情，一般只在策略初始化时调用，主要用于盘中策略重启后快速恢复
 
 ```cpp
 // 获取当日所有rb合约的所有depth行情
@@ -860,7 +860,7 @@ ctx->GetTodayMarketData({"FUT_SHFE_rb-.+?"}, now - std::chrono::minutes{30}, now
 
 ### PublishMessage
 
-策略可以通过PublishMessage往消息队列推送消息
+策略可以通过PublishMessage往共享内存消息队列推送消息
 
 data的最大长度有限制，定义在xyts/core/market_data.h的kMaxTopicMessageLen，超出的话接口会抛异常
 
@@ -1588,9 +1588,9 @@ void BarGenerator::UpdateBar(const DepthData& depth) { impl_->UpdateBar(depth); 
 
 ```yaml
 market_data_filters:
-  - name: duplicate_filter
+  - type: duplicate_filter
     errata_ms: 50
-  - name: timeout_filter
+  - type: timeout_filter
     timeout_ms: 5000
 ```
 
@@ -1636,7 +1636,7 @@ my_filter
 ```yaml
 # market_center.yaml
 market_data_filters:
-  - name: timeout_filter
+  - type: timeout_filter
     timeout_ms: 1000
 ```
 
