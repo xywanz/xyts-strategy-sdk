@@ -5,6 +5,7 @@
 
 #include "xyts/core/error_code.h"
 #include "xyts/core/trade_msg.h"
+#include "xyu/string_utils.h"
 
 namespace xyts {
 
@@ -156,6 +157,8 @@ inline std::string ToString(ProductType type) {
       return "Fund";
     case ProductType::kSpot:
       return "Spot";
+    case ProductType::kCombination:
+      return "Combination";
     default:
       return "Unknown";
   }
@@ -228,22 +231,25 @@ inline OrderStatus ParseOrderStatusFromString(const std::string& str) {
 }
 
 inline ProductType ParseProductTypeFromString(const std::string& str) {
-  if (strncasecmp(str.c_str(), "Futures", str.size()) == 0) {
+  auto lower_case_str = xyu::LowerCase(str);
+  if (lower_case_str == "futures") {
     return ProductType::kFutures;
-  } else if (strncasecmp(str.c_str(), "Options", str.size()) == 0) {
+  } else if (lower_case_str == "options") {
     return ProductType::kOptions;
-  } else if (strncasecmp(str.c_str(), "Stock", str.size()) == 0) {
+  } else if (lower_case_str == "stock") {
     return ProductType::kStock;
-  } else if (strncasecmp(str.c_str(), "ETF", str.size()) == 0) {
+  } else if (lower_case_str == "etf") {
     return ProductType::kETF;
-  } else if (strncasecmp(str.c_str(), "Index", str.size()) == 0) {
+  } else if (lower_case_str == "index") {
     return ProductType::kIndex;
-  } else if (strncasecmp(str.c_str(), "Bond", str.size()) == 0) {
+  } else if (lower_case_str == "bond") {
     return ProductType::kBond;
-  } else if (strncasecmp(str.c_str(), "Fund", str.size()) == 0) {
+  } else if (lower_case_str == "fund") {
     return ProductType::kFund;
-  } else if (strncasecmp(str.c_str(), "Spot", str.size()) == 0) {
+  } else if (lower_case_str == "spot") {
     return ProductType::kSpot;
+  } else if (lower_case_str == "combination") {
+    return ProductType::kCombination;
   } else {
     return ProductType::kUnknown;
   }

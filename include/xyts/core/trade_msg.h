@@ -117,14 +117,15 @@ enum class OrderStatus : uint8_t {
 // 合约的产品类型
 enum class ProductType : uint8_t {
   kUnknown = 0,
-  kOptions,  // 期权
-  kFutures,  // 期货
-  kStock,    // 股票
-  kETF,      // ETF
-  kIndex,    // 指数
-  kBond,     // 债券
-  kFund,     // 基金
-  kSpot,     // 现货
+  kOptions,      // 期权
+  kFutures,      // 期货
+  kStock,        // 股票
+  kETF,          // ETF
+  kIndex,        // 指数
+  kBond,         // 债券
+  kFund,         // 基金
+  kSpot,         // 现货
+  kCombination,  // 组合
 };
 
 // balance = available + margin + frozen - floating_pnl
@@ -237,7 +238,6 @@ struct NewOrderRequest {
   Volume volume;
   double price;
   std::chrono::microseconds timeout;
-  uint64_t user_data;  // 策略自定义数据
 };
 
 // 重置订单超时，同时也用于撤单
@@ -287,8 +287,6 @@ struct OrderResponse {
   Volume accum_trade_volume;
   // 成交额
   double accum_trade_amount;
-  // 用户自定义数据，发单时填写，回报带回
-  uint64_t user_data;
 
   // 只有本次发生了成交才会有下面三个字段
   // 本次成交数量
@@ -338,15 +336,15 @@ struct LogicalPositionData {
 };
 
 // 策略从Trader收到的消息的类型
-enum StrategyMsgType : uint32_t {
+enum TraderMsgType : uint32_t {
   kOrderResponse,
   kPosition,
   kLogicalPosition,
 };
 
 // 策略从Trader收到的消息
-struct StrategyMsg {
-  StrategyMsgType msg_type;
+struct TraderMsg {
+  TraderMsgType msg_type;
   union {
     OrderResponse order_rsp;
     PositionData position;
@@ -355,6 +353,6 @@ struct StrategyMsg {
 };
 
 static_assert(std::is_trivially_copyable_v<trading_cmd::TradingCommand>);
-static_assert(std::is_trivially_copyable_v<StrategyMsg>);
+static_assert(std::is_trivially_copyable_v<TraderMsg>);
 
 }  // namespace xyts

@@ -40,7 +40,7 @@ class SmartOrderManager {
 
   SmartOrderId SendOrder(SmartOrderCallback&& cb, ContractId contract_id, Volume volume,
                          Direction direction, OrderType type, double price,
-                         std::chrono::microseconds timeout = StrategyContext::kDefaultOrderTimeout);
+                         std::chrono::microseconds timeout = StrategyContext::kNeverTimeout);
 
   void CancelOrder(SmartOrderId smart_order_id);
 

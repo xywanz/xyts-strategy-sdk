@@ -1831,21 +1831,20 @@ local_timestamp,exchange_timestamp,open_interest,volume,turnover,last_price,bid_
 
 ### contract
 
-以comm_deri_contracts_2024-01-15.csv前几行为例来说明数据格式
+以contracts_2024-01-15.csv前几行为例来说明数据格式
 
 ```csv
-contract_id,instr,code,exchange,product_type,contract_unit,price_tick,upper_limit_price,lower_limit_price,long_margin_rate,short_margin_rate,max_limit_order_volume,min_limit_order_volume,max_market_order_volume,min_market_order_volume,list_date,expire_date,underlying_type,underlying_symbol,exercise_date,exercise_price
-1,FUT_SHFE_pb-202412,pb2412,SHFE,Futures,5,5,17290,15335,0.08,0.08,500,1,30,1,,2024-12-16,Unknown,,,0
-2,FUT_SHFE_rb-202401,rb2401,SHFE,Futures,10,1,4123,3730,0.2,0.2,500,30,30,30,,2024-01-15,Unknown,,,0
-3,FUT_SHFE_rb-202402,rb2402,SHFE,Futures,10,1,4008,3627,0.1,0.1,500,1,30,1,,2024-02-19,Unknown,,,0
-4,FUT_SHFE_rb-202403,rb2403,SHFE,Futures,10,1,4066,3679,0.07,0.07,500,1,30,1,,2024-03-15,Unknown,,,0
-5,FUT_SHFE_rb-202404,rb2404,SHFE,Futures,10,1,4085,3696,0.07,0.07,500,1,30,1,,2024-04-15,Unknown,,,0
-6,FUT_SHFE_rb-202405,rb2405,SHFE,Futures,10,1,4110,3719,0.07,0.07,500,1,30,1,,2024-05-15,Unknown,,,0
+instr,code,exchange,product_type,contract_unit,price_tick,upper_limit_price,lower_limit_price,long_margin_rate,short_margin_rate,max_limit_order_volume,min_limit_order_volume,max_market_order_volume,min_market_order_volume,list_date,expire_date,underlying_type,underlying_symbol,exercise_date,exercise_price
+FUT_SHFE_pb-202412,pb2412,SHFE,Futures,5,5,17290,15335,0.08,0.08,500,1,30,1,,2024-12-16,Unknown,,,0
+FUT_SHFE_rb-202401,rb2401,SHFE,Futures,10,1,4123,3730,0.2,0.2,500,30,30,30,,2024-01-15,Unknown,,,0
+FUT_SHFE_rb-202402,rb2402,SHFE,Futures,10,1,4008,3627,0.1,0.1,500,1,30,1,,2024-02-19,Unknown,,,0
+FUT_SHFE_rb-202403,rb2403,SHFE,Futures,10,1,4066,3679,0.07,0.07,500,1,30,1,,2024-03-15,Unknown,,,0
+FUT_SHFE_rb-202404,rb2404,SHFE,Futures,10,1,4085,3696,0.07,0.07,500,1,30,1,,2024-04-15,Unknown,,,0
+FUT_SHFE_rb-202405,rb2405,SHFE,Futures,10,1,4110,3719,0.07,0.07,500,1,30,1,,2024-05-15,Unknown,,,0
 ```
 
 数据字段，顺序无关紧要：
 
-- contract_id: 从1开始连续递增，主要是为了人看的时候方便对应合约，实际上随便填也没关系
 - instr: 标准合约名
 - code: 合约在交易所的命名
 - exchange: 交易所名

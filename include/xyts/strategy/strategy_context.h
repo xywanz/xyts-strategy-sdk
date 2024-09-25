@@ -38,83 +38,70 @@ class StrategyContext : public TimeoutManager {
 
   virtual ClientOrderId SendOrder(ContractId contract_id, Volume volume, Direction direction,
                                   PositionEffect position_effect, OrderType type, double price,
-                                  std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                                  uint64_t user_data = 0) = 0;
+                                  std::chrono::microseconds timeout = kNeverTimeout) = 0;
 
   ClientOrderId Buy(ContractId contract_id, Volume volume, OrderType type, double price,
-                    std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                    uint64_t user_data = 0) {
-    return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kAuto, type, price,
-                     timeout, user_data);
+                    std::chrono::microseconds timeout = kNeverTimeout) {
+    return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kAuto, type, price);
   }
 
   ClientOrderId BuySmart(ContractId contract_id, Volume volume, OrderType type, double price,
-                         std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                         uint64_t user_data = 0) {
-    return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kSmart, type, price,
-                     timeout, user_data);
+                         std::chrono::microseconds timeout = kNeverTimeout) {
+    return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kSmart, type, price);
   }
 
   ClientOrderId BuyLimit(ContractId contract_id, Volume volume, double price,
-                         std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                         uint64_t user_data = 0) {
+                         std::chrono::microseconds timeout = kNeverTimeout) {
     return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kAuto, OrderType::kLimit,
-                     price, timeout, user_data);
+                     price, timeout);
   }
 
   ClientOrderId BuyLimitSmart(ContractId contract_id, Volume volume, double price,
-                              std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                              uint64_t user_data = 0) {
+                              std::chrono::microseconds timeout = kNeverTimeout) {
     return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kSmart,
-                     OrderType::kLimit, price, timeout, user_data);
+                     OrderType::kLimit, price, timeout);
   }
 
-  ClientOrderId BuyMarket(ContractId contract_id, Volume volume, uint64_t user_data = 0) {
+  ClientOrderId BuyMarket(ContractId contract_id, Volume volume) {
     return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kAuto,
-                     OrderType::kMarket, 0, std::chrono::milliseconds{500}, user_data);
+                     OrderType::kMarket, 0, std::chrono::milliseconds{500});
   }
 
-  ClientOrderId BuyMarketSmart(ContractId contract_id, Volume volume, uint64_t user_data = 0) {
+  ClientOrderId BuyMarketSmart(ContractId contract_id, Volume volume) {
     return SendOrder(contract_id, volume, Direction::kBuy, PositionEffect::kSmart,
-                     OrderType::kMarket, 0, std::chrono::milliseconds{500}, user_data);
+                     OrderType::kMarket, 0, std::chrono::milliseconds{500});
   }
 
   ClientOrderId Sell(ContractId contract_id, Volume volume, OrderType type, double price,
-                     std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                     uint64_t user_data = 0) {
-    return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kAuto, type, price,
-                     timeout, user_data);
+                     std::chrono::microseconds timeout = kNeverTimeout) {
+    return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kAuto, type, price);
   }
 
   ClientOrderId SellSmart(ContractId contract_id, Volume volume, OrderType type, double price,
-                          std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                          uint64_t user_data = 0) {
-    return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kSmart, type, price,
-                     timeout, user_data);
+                          std::chrono::microseconds timeout = kNeverTimeout) {
+    return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kSmart, type, price);
   }
 
   ClientOrderId SellLimit(ContractId contract_id, Volume volume, double price,
-                          std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                          uint64_t user_data = 0) {
+                          std::chrono::microseconds timeout = kNeverTimeout) {
     return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kAuto,
-                     OrderType::kLimit, price, timeout, user_data);
+                     OrderType::kLimit, price, timeout);
   }
 
   ClientOrderId SellLimitSmart(ContractId contract_id, Volume volume, double price,
-                               std::chrono::microseconds timeout = kDefaultOrderTimeout,
-                               uint64_t user_data = 0) {
+                               std::chrono::microseconds timeout = kNeverTimeout) {
     return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kSmart,
-                     OrderType::kLimit, price, timeout, user_data);
+                     OrderType::kLimit, price, timeout);
   }
 
-  ClientOrderId SellMarket(ContractId contract_id, Volume volume, uint64_t user_data = 0) {
+  ClientOrderId SellMarket(ContractId contract_id, Volume volume) {
     return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kAuto,
-                     OrderType::kMarket, 0, std::chrono::milliseconds{500}, user_data);
+                     OrderType::kMarket, 0, std::chrono::milliseconds{500});
   }
 
-  ClientOrderId SellMarketSmart(ContractId contract_id, Volume volume, uint64_t user_data = 0) {
+  ClientOrderId SellMarketSmart(ContractId contract_id, Volume volume) {
     return SendOrder(contract_id, volume, Direction::kSell, PositionEffect::kSmart,
-                     OrderType::kMarket, 0, std::chrono::milliseconds{500}, user_data);
+                     OrderType::kMarket, 0, std::chrono::milliseconds{500});
   }
 
   virtual void CancelOrder(ClientOrderId client_order_id) = 0;
@@ -158,7 +145,7 @@ class StrategyContext : public TimeoutManager {
     return dynamic_cast<T*>(GetParamManager());
   }
 
-  static constexpr std::chrono::microseconds kDefaultOrderTimeout = std::chrono::days{1};
+  static constexpr std::chrono::microseconds kNeverTimeout = std::chrono::microseconds::max();
 };
 
 using EventId = StrategyContext::EventId;

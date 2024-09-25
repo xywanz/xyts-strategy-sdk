@@ -27,8 +27,8 @@ class OrderPlacer {
   ~OrderPlacer();
 
   void PlaceOrder(ContractId contract_id, Direction direction, Volume volume, double price,
-                  OrderPlaceId id, std::chrono::microseconds timeout = kDefaultTimeout,
-                  uint64_t user_data = 0) noexcept(false);
+                  OrderPlaceId id,
+                  std::chrono::microseconds timeout = kDefaultTimeout) noexcept(false);
 
   bool AnyOrderInTheMarket(ContractId contract_id, OrderPlaceId id) const;
 
