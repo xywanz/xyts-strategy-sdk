@@ -361,8 +361,8 @@ contract_files:
 holiday_directory: ../data/holiday  # xydata交易日历路径
 
 # 行情数据配置
-data_feed:
-  type: csv_data_feed
+data_replayer:
+  type: csv_data_replayer
   data_directory: ../data/depth  # xydata csv格式的快照数据目录
 
 matching_engine:
@@ -1601,7 +1601,7 @@ MarketDataFilter支持扩展，用户可将自定义的MarketFilter编译成so�
 
 #include <chrono>
 
-#include "xyts/market_data_filter/market_data_filter.h"
+#include "xyts/extension/market_data_filter/market_data_filter.h"
 
 namespace xyts {
 

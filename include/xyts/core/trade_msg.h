@@ -352,6 +352,8 @@ struct TraderMsg {
   };
 };
 
+static constexpr std::chrono::microseconds kNeverTimeout = std::chrono::microseconds::max();
+
 static_assert(std::is_trivially_copyable_v<trading_cmd::TradingCommand>);
 static_assert(std::is_trivially_copyable_v<TraderMsg>);
 

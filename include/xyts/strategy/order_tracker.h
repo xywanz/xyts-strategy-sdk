@@ -12,19 +12,16 @@ class OrderTracker {
 
   ClientOrderId SendOrder(OrderCallback&& cb, ContractId contract_id, Volume volume,
                           Direction direction, PositionEffect position_effect, OrderType type,
-                          double price,
-                          std::chrono::microseconds timeout = StrategyContext::kNeverTimeout);
+                          double price, std::chrono::microseconds timeout = kNeverTimeout);
 
   ClientOrderId Buy(OrderCallback&& cb, ContractId contract_id, Volume volume, OrderType type,
-                    double price,
-                    std::chrono::microseconds timeout = StrategyContext::kNeverTimeout) {
+                    double price, std::chrono::microseconds timeout = kNeverTimeout) {
     return SendOrder(std::move(cb), contract_id, volume, Direction::kBuy, PositionEffect::kAuto,
                      type, price, timeout);
   }
 
   ClientOrderId Sell(OrderCallback&& cb, ContractId contract_id, Volume volume, OrderType type,
-                     double price,
-                     std::chrono::microseconds timeout = StrategyContext::kNeverTimeout) {
+                     double price, std::chrono::microseconds timeout = kNeverTimeout) {
     return SendOrder(std::move(cb), contract_id, volume, Direction::kSell, PositionEffect::kAuto,
                      type, price, timeout);
   }

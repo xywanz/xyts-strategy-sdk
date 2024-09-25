@@ -144,8 +144,6 @@ class StrategyContext : public TimeoutManager {
   T* GetDerivedParamManager() {
     return dynamic_cast<T*>(GetParamManager());
   }
-
-  static constexpr std::chrono::microseconds kNeverTimeout = std::chrono::microseconds::max();
 };
 
 using EventId = StrategyContext::EventId;
