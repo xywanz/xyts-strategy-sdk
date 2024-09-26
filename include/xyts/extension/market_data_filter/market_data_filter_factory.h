@@ -25,20 +25,20 @@ class MarketDataFilterFactory {
 };
 
 // 内部编写的filter可以直接注册
-#define REGISTER_MARKET_DATA_FILTER(name, type)                                             \
-  static ::xyts::MarketDataFilterPtr CreateMarketDataFilter##type(const YAML::Node& conf) { \
-    return std::make_unique<type>(conf);                                                    \
-  }                                                                                         \
-  static const bool kIs##type##Registered [[gnu::unused]] = [] {                            \
-    ::xyts::MarketDataFilterFactory::GetMarketDataFilterCtorMap()[name] =                   \
-        &CreateMarketDataFilter##type;                                                      \
-    return true;                                                                            \
+#define REGISTER_MARKET_DATA_FILTER(name, cls)                                             \
+  static ::xyts::MarketDataFilterPtr CreateMarketDataFilter##cls(const YAML::Node& conf) { \
+    return std::make_unique<cls>(conf);                                                    \
+  }                                                                                        \
+  static const bool kIs##cls##Registered [[gnu::unused]] = [] {                            \
+    ::xyts::MarketDataFilterFactory::GetMarketDataFilterCtorMap()[name] =                  \
+        &CreateMarketDataFilter##cls;                                                      \
+    return true;                                                                           \
   }();
 
 // 如果是编译成动态库，则调用下面接口导出符号
-#define EXPORT_MARKET_DATA_FILTER(type)                                                     \
+#define EXPORT_MARKET_DATA_FILTER(cls)                                                      \
   extern "C" ::xyts::MarketDataFilterPtr CreateMarketDataFilter(const ::YAML::Node& conf) { \
-    return std::make_unique<type>(conf, spi);                                               \
+    return std::make_unique<cls>(conf, spi);                                                \
   }
 
 }  // namespace xyts

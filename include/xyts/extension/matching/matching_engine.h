@@ -1,14 +1,10 @@
 #pragma once
 
-#include <map>
-#include <memory>
-#include <string>
 #include <vector>
 
 #include "xyts/core/market_data.h"
 #include "xyts/extension/matching/order_event_listener.h"
 #include "xyts/trade_api/request.h"
-#include "yaml-cpp/yaml.h"
 
 namespace xyts {
 

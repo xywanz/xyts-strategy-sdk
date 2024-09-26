@@ -417,8 +417,11 @@ xyts/
         data_feed/
             ctp.yaml
             ...
+        strategy_demo_A.json
+        strategy_demo_B.json
     lib/
         ...
+        libstrategy_demo.so
     data/
         ...
     log/
@@ -532,8 +535,42 @@ subscription_list:
 ./query_contracts ../log/trader.log ../conf
 # 一键启动trader、market_center以及各个行情程序
 ./restart.sh
-# 启动策略
-python3 manager.py start_strategy strategy_spread_arb_01
+```
+
+接下来配置策略，假如我们有一个策略strategy_demo，我们想启动两个实例（策略参数不同），分别叫strategy_demo_A和strategy_demo_B，我们需要为A和B都创建好策略参数的json文件并放在conf目录下，如本章开头目录结构所示。同时把编译好的策略动态库libstrategy_demo.so放到lib目录下。然后在bin下面创建一个策略启动配置strategy_startup.py
+
+```py
+# strategy_startup.py
+conf = {
+    "strategy_list": [
+        {
+            "strategy": "strategy_demo",
+            "instance_list": [
+                "strategy_demo_A",
+                "strategy_demo_B",
+            ]
+        }
+    ]
+}
+```
+
+然后在bin目录下执行以下命令来启停策略
+
+```sh
+# 启动全部策略
+./start_strategy.sh strategy_startup.py
+# 某个实例第一次上线需要用strategy_startup.py的方式来启动，之后就可以通过策略名来单独启动了
+# ./start_strategy.sh strategy_demo_A
+
+# 如果策略是第一次上线，但不想用strategy_startup.py的方式来启动，需要先调用create_strategy_instance.sh
+# ./create_strategy_instance.sh strategy_demo strategy_demo_C
+# 在conf下准备好strategy_demo_C.json后，即可单独启动
+# ./start_strategy strategy_demo_C
+
+# 停止某个策略
+./stop_strategy.sh strategy_demo_A
+# 停止全部策略
+./stop_strategy.sh strategy_startup.py
 ```
 
 ## Strategy基类

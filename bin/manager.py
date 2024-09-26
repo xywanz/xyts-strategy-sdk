@@ -43,8 +43,8 @@ def get_app_log():
 g_app_log = get_app_log()
 
 # 启动配置
-g_loglevel_options = ('trace', 'debug', 'info', 'warn', 'error')
-g_process_loglevel = 'info'  # "trace|debug|info|warn|error"
+g_loglevel_options = ('trace', 'debug', 'info', 'warning', 'error')
+g_process_loglevel = 'info'
 g_strategy_data_file = '../data/manager_strategy.data'
 g_check_core_file = '../data/manager_check_core.data'
 g_market_dir = '../conf/data_feed'
@@ -75,8 +75,8 @@ def run_shell(shell_cmd, cwd=None):
     outs = outs.decode('utf-8').strip()
     errs = errs.decode('utf-8').strip()
     if proc.returncode != 0:
-        g_app_log.error("shell_cmd=%s|outs=%s|errs=%s", shell_cmd, outs, errs)
-        raise RuntimeError("run shell fail cmd = " + shell_cmd)
+        g_app_log.error(f"shell_cmd={shell_cmd}|outs={outs}|errs={errs}")
+        raise RuntimeError(f"Fail to execute cmd: {shell_cmd}")
     return outs, errs
 
 
@@ -233,7 +233,7 @@ def stop(process_list, stop_all_strategy):
     time.sleep(1)
     running_list = phelp.get_running_list(process_list)
     if running_list:
-        raise RuntimeError("停进程失败 %s" % running_list)
+        raise RuntimeError(f"Failed to stop {running_list}")
     if stop_all_strategy:
         strategy_help.remove_local_data()
 
@@ -247,8 +247,7 @@ def start(process_list_list):
             process_list = [process_list]
         running_list = phelp.get_running_list(process_list)
         if running_list:
-            print("WARNNING have running process_list = ", running_list)
-            print("please stop first")
+            print(f"WARNING: Some programs are running, please stop first: {running_list}")
             exit(-1)
     for process_list in process_list_list:
         if not isinstance(process_list, (list, tuple)):
@@ -258,7 +257,7 @@ def start(process_list_list):
         time.sleep(1)
         not_running_list = phelp.get_not_running_list(process_list)
         if not_running_list:
-            raise RuntimeError("进程启动失败 %s" % not_running_list)
+            raise RuntimeError(f"Failed to start {not_running_list}")
         print("start %s done" % " ".join(process_list))
 
 
@@ -268,70 +267,50 @@ def _get_strategy_list_from_py(pymodule: str) -> list:
     conf_path = os.path.join(pwd, "../conf")
     module = __import__(pymodule)
 
-    def _gen_json_conf(template_conf_file, strategy_conf_file, output_file):
-        output_conf = json.load(open(template_conf_file))
-        strategy_conf = json.load(open(strategy_conf_file))
-        for key, val in strategy_conf.items():
-            output_conf[key]["value"] = val["value"]
-        if os.path.exists(output_file):
-            old_conf = json.load(open(output_file))
-            for k, v in old_conf.items():
-                if k in output_conf.keys():
-                    output_conf[k]["value"] = v["value"]
-        with open(output_file, 'w') as fp:
-            json.dump(output_conf, fp, indent=2)
-
-    def _gen_strategy(default_strategy: str, name: str):
-        default_strategy_json = f"{default_strategy}.json"
-        default_strategy_so = f"lib{default_strategy}.so"
-        sub_strategy_json = f"{name}.json"
-        strategy_so = f"lib{name}.so"
-        strategy_json = f"{name}_autogen.json"
+    def _gen_strategy(strategy: str, name: str):
+        strategy_so = f"lib{strategy}.so"
+        instance_json = f"{name}.json"
+        instance_so = f"lib{name}.so"
         os.chdir(lib_path)
-        if os.path.exists(strategy_so):
-            os.remove(strategy_so)
-        os.symlink(default_strategy_so, strategy_so)
+        if os.path.exists(instance_so):
+            os.remove(instance_so)
+        os.symlink(strategy_so, instance_so)
         os.chdir(conf_path)
-        if not os.path.exists(sub_strategy_json):
-            raise Exception("文件不存在 " + sub_strategy_json)
-        _gen_json_conf(default_strategy_json, sub_strategy_json, strategy_json)
+        if not os.path.exists(instance_json):
+            raise Exception(f"instance param file {instance_json} does not exist")
 
-    def _gen_pystrategy(default_strategy: str, name: str):
-        default_strategy_json = f"{default_strategy}.json"
-        default_strategy_py = f"{default_strategy}.py"
-        sub_strategy_json = f"{name}.json"
-        strategy_py = f"{name}.py"
-        strategy_json = f"{name}_autogen.json"
+    def _gen_pystrategy(strategy: str, name: str):
+        strategy_py = f"{strategy}.py"
+        instance_json = f"{name}.json"
+        instance_py = f"{name}.py"
         os.chdir(pwd)
-        if os.path.exists(strategy_py):
-            os.remove(strategy_py)
-        os.symlink(default_strategy_py, strategy_py)
+        if os.path.exists(instance_py):
+            os.remove(instance_py)
+        os.symlink(strategy_py, instance_py)
         os.chdir(conf_path)
-        if not os.path.exists(sub_strategy_json):
-            raise Exception("文件不存在 " + sub_strategy_json)
-        _gen_json_conf(default_strategy_json, sub_strategy_json, strategy_json)
+        if not os.path.exists(instance_json):
+            raise Exception(f"instance param file {instance_json} does not exist")
 
     strategy_names = []
-    strategy_names_set = set()  # 名字不能重复
+    strategy_names_set = set()
     for strategy_info in module.conf["strategy_list"]:
-        default_strategy = strategy_info["default_strategy"]
-        strategy_names_set.add(default_strategy)
-        gen_strategy_fn = _gen_pystrategy if default_strategy.startswith("py") else _gen_strategy
-        for strategy in strategy_info["sub_strategy_list"]:
-            if strategy == default_strategy:
-                raise Exception("sub_strategy_list %s 名字不能和 default_strategy %s 一样" % (
-                    strategy, default_strategy))
-            if strategy in strategy_names_set:
-                raise Exception("sub_strategy_list %s 名字有重复" % strategy)
-            strategy_names_set.add(strategy)
-            gen_strategy_fn(default_strategy, strategy)
-            strategy_names.append(strategy)
+        strategy = strategy_info["strategy"]
+        strategy_names_set.add(strategy)
+        gen_strategy_fn = _gen_pystrategy if strategy.startswith("py") else _gen_strategy
+        for strategy_instance in strategy_info["instance_list"]:
+            if strategy_instance == strategy:
+                raise Exception(f"strategy name is the same with strategy template: {strategy}")
+            if strategy_instance in strategy_names_set:
+                raise Exception(f"duplicate strategy name {strategy_instance}")
+            strategy_names_set.add(strategy_instance)
+            gen_strategy_fn(strategy, strategy_instance)
+            strategy_names.append(strategy_instance)
     os.chdir(pwd)
     return strategy_names
 
 
 def _check_arg_strategy_list(strategy_list: list):
-    '''这个函数可能会修改strategy_list'''
+    '''This function may modify strategy_list'''
     assert isinstance(strategy_list, list) and len(strategy_list) > 0
     new_strategy_list = []
     need_modify = False
@@ -348,10 +327,10 @@ def _check_arg_strategy_list(strategy_list: list):
         strategy_list.clear()
         strategy_list.extend(new_strategy_list)
     if len(set(strategy_list)) != len(strategy_list):
-        raise RuntimeError("策略名有重复 %s" % strategy_list)
+        raise Exception(f"duplicate strategy: {strategy_list}")
     for strategy in strategy_list:
         if ' ' in strategy or '\t' in strategy:
-            raise RuntimeError("%s 策略名非法，不能有空格" % strategy)
+            raise RuntimeError(f"illegal strategy name {strategy}")
 
 
 def start_strategy(strategy_list):
@@ -425,7 +404,7 @@ def usage():
     def help(cmd, desc):
         print("python3 " + sys.argv[0], "%-44s" % cmd,  desc)
     help("stop_all", "停掉所有程序（含策略）")
-    help("restart_all", "停掉所有程序（含策略），删掉共享内存，启动所有程序（不含策略）")
+    help("restart_all", "停掉所有程序（含策略），启动所有程序（不含策略）")
     help("stop <svr1> <svr2> ...", "停掉程序（不包含策略）")
     help("start <svr1> <svr2> ...", "启动程序（不包含策略）")
     help("start_strategy <strategy1> <strategy2> ...", "启动策略1 策略2 策略3 ...")
@@ -448,9 +427,9 @@ def main():
     parse_loglevel()
     cmd = sys.argv[1]
     if cmd == "stop_all":
-        stop(g_process_list, True)  # 策略也一起停
+        stop(g_process_list, True)
     elif cmd == "restart_all":
-        stop(g_process_list, True)  # 策略也一起停
+        stop(g_process_list, True)
         start(g_process_priority_lists)
     elif cmd == "stop":
         stop(sys.argv[2:], False)
@@ -471,5 +450,5 @@ if __name__ == "__main__":
     try:
         main()
     except:
-        g_app_log.exception("run main exception")
+        g_app_log.exception("exception from main")
         raise

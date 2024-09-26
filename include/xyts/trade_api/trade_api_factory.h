@@ -7,8 +7,11 @@
 
 namespace xyts {
 
-TradeApiPtr CreateTradeApi(const std::string& name, const YAML::Node& conf);
+class TradeApiFactory {
+ public:
+  static TradeApiPtr Create(const std::string& name, const YAML::Node& conf);
 
-TradeApiPtr LoadTradeApiFromDll(const std::filesystem::path& path, const YAML::Node& conf);
+  static TradeApiPtr CreateFromDll(const std::filesystem::path& path, const YAML::Node& conf);
+};
 
 }  // namespace xyts

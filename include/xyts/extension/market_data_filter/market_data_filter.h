@@ -3,7 +3,6 @@
 #include <memory>
 
 #include "xyts/core/market_data.h"
-#include "yaml-cpp/yaml.h"
 
 namespace xyts {
 

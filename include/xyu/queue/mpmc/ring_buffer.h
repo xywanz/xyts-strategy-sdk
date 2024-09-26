@@ -12,8 +12,6 @@ class MPMCRingBuffer {
   static_assert(capacity != 0 && (capacity & (capacity - 1)) == 0, "capacity must be power of 2");
 
   struct Producer {
-    // 因为MPMCRingBuffer的地址可能不是cacheline对齐，前面也要填充。
-    // 采用2倍cacheline对齐是因为cpu加载cacheline的时候可能会一次加载连续的两个。
     alignas(kCacheLineSize * 2) char padding0_;
     alignas(kCacheLineSize * 2) std::atomic<uint64_t> head{0};
     alignas(kCacheLineSize * 2) std::atomic<uint64_t> tail{0};

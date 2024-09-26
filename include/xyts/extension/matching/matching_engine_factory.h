@@ -21,19 +21,19 @@ class MatchingEngineFactory {
   static MatchingEngineCtorMap& GetMatchingEngineCtorMap();
 };
 
-#define REGISTER_MATCHING_ENGINE(name, type)                                                       \
-  static ::xyts::MatchingEnginePtr CreateMatchingEngine##type(const YAML::Node& conf) {            \
-    return std::make_unique<type>(conf);                                                           \
-  }                                                                                                \
-  static const bool kIs##type##Registered [[gnu::unused]] = [] {                                   \
-    ::xyts::MatchingEngineFactory::GetMatchingEngineCtorMap()[name] = &CreateMatchingEngine##type; \
-    return true;                                                                                   \
+#define REGISTER_MATCHING_ENGINE(name, cls)                                                       \
+  static ::xyts::MatchingEnginePtr CreateMatchingEngine##cls(const YAML::Node& conf) {            \
+    return std::make_unique<cls>(conf);                                                           \
+  }                                                                                               \
+  static const bool kIs##cls##Registered [[gnu::unused]] = [] {                                   \
+    ::xyts::MatchingEngineFactory::GetMatchingEngineCtorMap()[name] = &CreateMatchingEngine##cls; \
+    return true;                                                                                  \
   }();
 
 // 如果是编译成动态库，则调用下面接口导出符号
-#define EXPORT_MATCHING_ENGINE(type)                                                    \
+#define EXPORT_MATCHING_ENGINE(cls)                                                     \
   extern "C" ::xyts::MatchingEnginePtr CreateMatchingEngine(const ::YAML::Node& conf) { \
-    return std::make_unique<type>(conf);                                                \
+    return std::make_unique<cls>(conf);                                                 \
   }
 
 }  // namespace xyts

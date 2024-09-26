@@ -1,21 +1,10 @@
 #pragma once
 
-#include <atomic>
-#include <chrono>
-#include <map>
-#include <memory>
-#include <string>
+#include <functional>
 
 #include "xyts/core/market_data.h"
-#include "xyu/datetime.h"
-#include "yaml-cpp/yaml.h"
 
 namespace xyts {
-
-struct TimeInterval {
-  xyu::datetime::time begin_time;
-  xyu::datetime::time end_time;
-};
 
 class DataReplayer {
  public:

@@ -62,7 +62,7 @@ struct Contract {
 
   xydata::SessionsPtr sessions = nullptr;
 
-  // ----- 衍生品独有属性 -----
+  // ----- 期权独有属性 -----
   // 标的的合约类型
   ProductType underlying_type;
   // 标的的内部命名

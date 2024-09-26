@@ -19,7 +19,7 @@ constexpr int kSourceLen = 12;
 constexpr int kMaxTopicMessageLen = 480;
 
 struct MarketDataHeader {
-  char source[kSourceLen];  // 行情源
+  char source[kSourceLen];
   ContractId contract_id;
   std::chrono::microseconds local_timestamp;
   std::chrono::microseconds exchange_timestamp;
@@ -37,7 +37,6 @@ struct DepthData : public MarketDataHeader {
   std::array<Volume, kMarketL2Depth> bid_volume;
 };
 
-// K线数据
 struct BarData : public MarketDataHeader {
   std::chrono::seconds period;
 

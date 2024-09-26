@@ -1,9 +1,5 @@
 #pragma once
 
-#include <map>
-#include <memory>
-#include <stdexcept>
-
 #include "xyts/trade_api/request.h"
 
 namespace xyts {

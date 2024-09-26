@@ -7,9 +7,12 @@
 
 namespace xyts {
 
-DataFeedApiPtr CreateDataFeedApi(const std::string& name, const YAML::Node& conf, DataFeedSpi* spi);
+class DataFeedApiFactory {
+ public:
+  static DataFeedApiPtr Create(const std::string& name, const YAML::Node& conf, DataFeedSpi* spi);
 
-DataFeedApiPtr LoadDataFeedApiFromDll(const std::filesystem::path& path, const YAML::Node& conf,
+  static DataFeedApiPtr CreateFromDll(const std::filesystem::path& path, const YAML::Node& conf,
                                       DataFeedSpi* spi);
+};
 
 }  // namespace xyts
