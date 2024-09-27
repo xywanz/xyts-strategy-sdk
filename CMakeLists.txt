@@ -7,6 +7,7 @@ target_include_directories(xyts-strategy-sdk INTERFACE
     "${PROJECT_SOURCE_DIR}/include"
     "${PROJECT_SOURCE_DIR}/third_party/nlohmann_json/include"
     "${PROJECT_SOURCE_DIR}/third_party/fmt/include"
-    "${PROJECT_SOURCE_DIR}/third_party/quill/include")
+    "${PROJECT_SOURCE_DIR}/third_party/quill/include"
+    "${PROJECT_SOURCE_DIR}/third_party/yaml-cpp/include")
 target_compile_definitions(xyts-strategy-sdk INTERFACE QUILL_DISABLE_NON_PREFIXED_MACROS QUILL_FMT_EXTERNAL)
 
