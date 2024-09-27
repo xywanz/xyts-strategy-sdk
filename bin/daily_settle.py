@@ -21,12 +21,12 @@ def settle_position(conn):
         pos.at[index, 'short_open_pending'] = 0
         pos.at[index, 'long_close_pending'] = 0
         pos.at[index, 'short_close_pending'] = 0
-        pos.at[index, 'long_yd_volume'] = row['long_volume']
-        pos.at[index, 'short_yd_volume'] = row['short_volume']
+        pos.at[index, 'long_yd_position'] = row['long_position']
+        pos.at[index, 'short_yd_position'] = row['short_position']
         pos.at[index, 'long_realized_pnl'] = 0.0
         pos.at[index, 'short_realized_pnl'] = 0.0
         pos.at[index, 'last_trade_id'] = 0
-    pos = pos[(pos.long_volume != 0) | (pos.short_volume != 0)]
+    pos = pos[(pos.long_position != 0) | (pos.short_position != 0)]
 
     conn.execute('DELETE FROM xyts_position')
     pos.to_sql('xyts_position', conn, if_exists='append', index=False)
@@ -40,7 +40,7 @@ def settle_logical_position(conn):
         pos.at[index, 'sell_pending'] = 0
         pos.at[index, 'realized_pnl'] = 0.0
         pos.at[index, 'last_trade_id'] = 0
-    pos = pos[pos.volume != 0]
+    pos = pos[pos.position != 0]
 
     conn.execute('DELETE FROM xyts_logical_position')
     pos.to_sql('xyts_logical_position', conn, if_exists='append', index=False)
@@ -90,9 +90,9 @@ def settle_expired_contract(conn, contract_table: dict):
             continue
         if str(contract_table[instr]['expire_date']) == "nan" or datetime.datetime.strptime(contract_table[instr]['expire_date'], '%Y-%m-%d').date() > today:
             continue
-        pos.at[index, 'long_volume'] = 0
-        pos.at[index, 'short_volume'] = 0
-    pos = pos[(pos.long_volume != 0) | (pos.short_volume != 0)]
+        pos.at[index, 'long_position'] = 0
+        pos.at[index, 'short_position'] = 0
+    pos = pos[(pos.long_position != 0) | (pos.short_position != 0)]
 
     trades.to_sql('xyts_internal_trade', conn, if_exists='append', index=False)
     conn.execute('DELETE FROM xyts_logical_position')

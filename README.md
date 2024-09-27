@@ -268,15 +268,15 @@ void StrategySpreadArb::OnDepth(const DepthData& depth) {
     auto pos = ctx_->GetLogicalPosition(leg1_contract_->contract_id);
     if (spread >= param_->get_upper_line()) {
       // 超过上轨，如果仓位还没满做空spread
-      if (pos.volume > -1) {
-        ctx_->Buy(leg2_contract_->contract_id, 1, OrderType::kMarket, 0);
-        ctx_->Sell(leg1_contract_->contract_id, 1, OrderType::kMarket, 0);
+      if (pos.position > -1) {
+        ctx_->BuyMarket(leg2_contract_->contract_id, 1);
+        ctx_->SellMarket(leg1_contract_->contract_id, 1);
       }
     } else if (spread <= param_->get_lower_line()) {
       // 跌破下轨，如果仓位还没满则做多spread
-      if (pos.volume < 1) {
-        ctx_->Sell(leg2_contract_->contract_id, 1, OrderType::kMarket, 0);
-        ctx_->Buy(leg1_contract_->contract_id, 1, OrderType::kMarket, 0);
+      if (pos.position < 1) {
+        ctx_->SellMarket(leg2_contract_->contract_id, 1);
+        ctx_->BuyMarket(leg1_contract_->contract_id, 1);
       }
     }
   }

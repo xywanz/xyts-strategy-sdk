@@ -128,16 +128,14 @@ enum class ProductType : uint8_t {
   kCombination,  // 组合
 };
 
-// balance = available + margin + frozen - floating_pnl
-// total_asset = balance + floating_pnl = available + margin + frozen
-// available: 可用资金，可用于购买证券资产的资金
-// margin: 保证金，对于股票来说就是持有的股票资产
-// fronzen: 冻结资金，未成交的订单也需要预先占用资金
+// balance = available + margin + frozen
+// total_equity = balance + position_value
 struct Account {
-  double total_asset;        // 总资产
-  double balance;            // 结余
+  double total_equity;       // 总资产
+  double position_value;     // 持仓市值
+  double balance;            // 现金余额
   double available;          // 可用资金
-  double margin;             // 保证金
+  double margin;             // 占用保证金
   double frozen;             // 冻结金额
   double fee;                // 手续费
   double floating_pnl;       // 账户浮动盈亏
@@ -211,8 +209,8 @@ struct OrderRecord {
 
 struct InitialYdPosition {
   std::string instr;
-  Volume long_volume;
-  Volume short_volume;
+  Volume long_position;
+  Volume short_position;
 };
 
 namespace trading_cmd {
@@ -319,18 +317,18 @@ struct OrderResponse {
 // 物理持仓
 struct PositionData {
   ContractId contract_id;
-  Volume long_volume;
-  Volume long_yd_volume;
+  Volume long_position;
+  Volume long_yd_position;
   double long_cost_price;
-  Volume short_volume;
-  Volume short_yd_volume;
+  Volume short_position;
+  Volume short_yd_position;
   double short_cost_price;
 };
 
 // 逻辑持仓
 struct LogicalPositionData {
   ContractId contract_id;
-  Volume volume;
+  Volume position;
   double cost_price;
   double realized_pnl;
 };
