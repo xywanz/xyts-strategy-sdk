@@ -36,7 +36,7 @@ class DataFilterFactory {
 // 如果是编译成动态库，则调用下面接口导出符号
 #define EXPORT_DATA_FILTER(cls)                                                 \
   extern "C" ::xyts::DataFilterPtr CreateDataFilter(const ::YAML::Node& conf) { \
-    return std::make_unique<cls>(conf, spi);                                    \
+    return std::make_unique<cls>(conf);                                         \
   }
 
 }  // namespace xyts
