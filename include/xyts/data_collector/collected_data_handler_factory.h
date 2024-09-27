@@ -38,7 +38,7 @@ class CollectedDataHandlerFactory {
 #define EXPORT_COLLECTED_DATA_HANDLER(cls)                               \
   extern "C" ::xyts::CollectedDataHandlerPtr CreateCollectedDataHandler( \
       const ::YAML::Node& conf) {                                        \
-    return std::make_unique<type>(conf);                                 \
+    return std::make_unique<cls>(conf);                                  \
   }
 
 }  // namespace xyts
