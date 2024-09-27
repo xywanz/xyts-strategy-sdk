@@ -3,7 +3,6 @@
 #include <memory>
 #include <string>
 
-#include "xyts/core/config.h"
 #include "xyts/data_collector/collected_data_type.h"
 #include "xyu/utility.h"
 
