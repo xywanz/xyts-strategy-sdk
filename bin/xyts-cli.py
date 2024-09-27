@@ -18,8 +18,8 @@ kNetCmdModifyRiskRule = 20014
 g_trader_ip = '127.0.0.1'
 g_trader_port = 10086
 
-g_market_center_ip = '127.0.0.1'
-g_market_center_port = 10087
+g_data_center_ip = '127.0.0.1'
+g_data_center_port = 10087
 
 
 class PackageCodec:
@@ -82,8 +82,8 @@ def send_cmd_to_trader(cmd, req):
     send_cmd((g_trader_ip, g_trader_port), cmd, req)
 
 
-def send_cmd_to_market_center(cmd, req):
-    send_cmd((g_market_center_ip, g_market_center_port), cmd, req)
+def send_cmd_to_data_center(cmd, req):
+    send_cmd((g_data_center_ip, g_data_center_port), cmd, req)
 
 
 def internal_trade(args):
@@ -159,7 +159,7 @@ def query_strategy_params(args):
         'strategy': args.strategy,
         'cmd': 'query_strategy_params'
     }
-    send_cmd_to_market_center(kNetCmdNotifyStrategy, req)
+    send_cmd_to_data_center(kNetCmdNotifyStrategy, req)
 
 
 def update_strategy_params(args):
@@ -168,7 +168,7 @@ def update_strategy_params(args):
         'cmd': 'update_strategy_params',
         'params_update': json.loads(args.conf)
     }
-    send_cmd_to_market_center(kNetCmdNotifyStrategy, req)
+    send_cmd_to_data_center(kNetCmdNotifyStrategy, req)
 
 
 def send_cmd_to_strategy(args):
@@ -177,21 +177,21 @@ def send_cmd_to_strategy(args):
         'cmd': 'send_cmd_to_strategy',
         'data': json.loads(args.data)
     }
-    send_cmd_to_market_center(kNetCmdNotifyStrategy, req)
+    send_cmd_to_data_center(kNetCmdNotifyStrategy, req)
 
 
 def subscribe_market_data(args):
     req = {
         'subscription_list': args.pattern,
     }
-    send_cmd_to_market_center(kNetCmdDataFeedSubscribe, req)
+    send_cmd_to_data_center(kNetCmdDataFeedSubscribe, req)
 
 
 def unsubscribe_market_data(args):
     req = {
         'unsubscription_list': args.pattern,
     }
-    send_cmd_to_market_center(kNetCmdDataFeedUnsubscribe, req)
+    send_cmd_to_data_center(kNetCmdDataFeedUnsubscribe, req)
 
 
 def parse_args_and_run():

@@ -395,8 +395,8 @@ nohup ./backtester ../conf/backtester.yaml ../log/backtester.log 2>&1 &
 在启动策略前需要启动以下进程：
 
 - trader
-- market_center
-- 各个data_feed程序用于收行情（只需要在market_center之后启动，与策略之间的启动顺序没有要求，而且可以随时启停），如果有多个源的话可以启动多个以提高可靠性
+- data_center
+- 各个data_feed程序用于收行情（只需要在data_center之后启动，与策略之间的启动顺序没有要求，而且可以随时启停），如果有多个源的话可以启动多个以提高可靠性
 
 交易系统实盘运行目录如下，配置放在conf目录下，account下的每个yaml文件都对应一个账户，data_feed目录下的每一个yaml文件都对应一个行情源
 
@@ -404,12 +404,12 @@ nohup ./backtester ../conf/backtester.yaml ../log/backtester.log 2>&1 &
 xyts/
     bin/
         trader
-        market_center
+        data_center
         ...
     conf/
         global.yaml
         data_collector.yaml
-        market_center.yaml
+        data_center.yaml
         trader.yaml
         account/
             my_ctp.yaml
@@ -443,7 +443,7 @@ contract_file:  # 必填
 
 xyts_db_address: ../data/xyts.db  # 必填
 trader_service_port: 10086  # 可选
-market_service_port: 10087  # 可选
+data_service_port: 10087  # 可选
 strategy_param_directory: ../conf  # 可选
 reduce_cpu_usage: false  # 可选，cpu核数足够、需要极低延迟的情况可以用false
 ```
@@ -458,14 +458,14 @@ handlers:
 ```
 
 ```yaml
-# market_center.yaml  可选，可以没有该配置文件
+# data_center.yaml  可选，可以没有该配置文件
 
 # 配置一些插件
 slow_task_manager:
   slow_tasks:
     - type: market_data_db_writer  # 会将当日行情实时写入db，以供策略通过GetTodayMarketData来查询
 
-market_data_filters:
+data_filters:
   - type: duplicate_filter  # 多个行情源择优去重
     errata_ms: 50
   - type: timeout_filter  # 丢弃延迟太久的行情
@@ -533,7 +533,7 @@ subscription_list:
 ```sh
 # 生成合约表
 ./query_contracts ../log/trader.log ../conf
-# 一键启动trader、market_center以及各个行情程序
+# 一键启动trader、data_center以及各个行情程序
 ./restart.sh
 ```
 
@@ -1614,35 +1614,35 @@ void BarGenerator::UpdateBar(const DepthData& depth) { impl_->UpdateBar(depth); 
 }  // namespace xyts::strategy
 ```
 
-## 实盘MarketDataFilter扩展
+## 实盘DataFilter扩展
 
 实盘中，如果同时接入了多个相同的行情源，用户可加载自定义的行情过滤器，xyts默认提供了两个过滤器
 
 - duplicate_filter: 行情择优去重
 - timeout_filter: 如果行情的交易所时间戳比本地接收时间戳小得多，则丢弃该行情
 
-在market_center.yaml中配置filter即可使用
+在data_center.yaml中配置filter即可使用
 
 ```yaml
-market_data_filters:
+data_filters:
   - type: duplicate_filter
     errata_ms: 50
   - type: timeout_filter
     timeout_ms: 5000
 ```
 
-MarketDataFilter支持扩展，用户可将自定义的MarketFilter编译成so放在lib下即可加载
+DataFilter支持扩展，用户可将自定义的MarketFilter编译成so放在lib下即可加载
 
 ```cpp
 #pragma once
 
 #include <chrono>
 
-#include "xyts/extension/market_data_filter/market_data_filter.h"
+#include "xyts/extension/data_filter/data_filter.h"
 
 namespace xyts {
 
-class MyFilter final : public MarketDataFilter {
+class MyFilter final : public DataFilter {
  public:
   explicit MyFilter(const YAML::Node& conf)
       : timeout_(std::chrono::milliseconds(conf["timeout_ms"].as<int64_t>())) {}
@@ -1655,7 +1655,7 @@ class MyFilter final : public MarketDataFilter {
   std::chrono::milliseconds timeout_;
 };
 
-REGISTER_MARKET_DATA_FILTER("my_filter", MyFilter);
+REGISTER_DATA_FILTER("my_filter", MyFilter);
 
 }  // namespace xyts
 
@@ -1671,8 +1671,8 @@ my_filter
 ```
 
 ```yaml
-# market_center.yaml
-market_data_filters:
+# data_center.yaml
+data_filters:
   - type: timeout_filter
     timeout_ms: 1000
 ```

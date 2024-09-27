@@ -8,7 +8,7 @@ enum class CollectedDataType {
   kTrader,         // trader相关
   kStrategy,       // strategy相关
   kProcessStatus,  // 进程状态
-  kMarketCenter,   // 行情源
+  kDataCenter,     // 行情源
   kAlgoTrading,    // 算法单相关
   kDataTypeNum,
 };

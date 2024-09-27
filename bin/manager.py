@@ -46,17 +46,16 @@ g_app_log = get_app_log()
 g_loglevel_options = ('trace', 'debug', 'info', 'warning', 'error')
 g_process_loglevel = 'info'
 g_strategy_data_file = '../data/manager_strategy.data'
-g_check_core_file = '../data/manager_check_core.data'
-g_market_dir = '../conf/data_feed'
-g_market_conf = []
-if os.path.exists(g_market_dir):
-    g_market_conf = [yaml.safe_load(open(os.path.join(g_market_dir, entry))) for entry in os.listdir(g_market_dir)]
+g_data_feed_dir = '../conf/data_feed'
+g_data_feed_conf = []
+if os.path.exists(g_data_feed_dir):
+    g_data_feed_conf = [yaml.safe_load(open(os.path.join(g_data_feed_dir, entry))) for entry in os.listdir(g_data_feed_dir)]
 g_process_priority_lists = []
 # 启动顺序1
-g_process_priority_lists.append(['market_center'])
+g_process_priority_lists.append(['data_center'])
 g_process_priority_lists.append(['trader'])
 # 启动顺序2
-_1 = ['shared_memory_data_dispatcher ' + gateway["name"] for gateway in g_market_conf if gateway["enable"]]
+_1 = ['shared_memory_data_dispatcher ' + gateway["name"] for gateway in g_data_feed_conf if gateway["enable"]]
 g_process_priority_lists.append(_1)
 # 进程汇总
 g_process_list = []
